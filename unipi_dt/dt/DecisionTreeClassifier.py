@@ -56,7 +56,7 @@ class DecisionTreeClassifier(object):
         min_entropy = 1
         cutoff = None
         for i, c in enumerate(x.T):
-            print(f'Column number: {i}')
+            print(f'Column {i}')
             entropy, cur_cutoff = self.find_best_split(c, y)
             if entropy == 0:    # find the first perfect cutoff. Stop Iterating
                 return i, cur_cutoff, entropy
@@ -70,7 +70,6 @@ class DecisionTreeClassifier(object):
     def find_best_split(self, col, y):
         min_entropy = 10
         n = len(y)
-        print(f'length: {n}')
         for value in set(col):
             y_predict = col < value
             my_entropy = self.get_entropy(y_predict, y)
@@ -80,15 +79,17 @@ class DecisionTreeClassifier(object):
         return min_entropy, cutoff
                                            
     def predict(self, x):
-        tree = self.trees
         results = np.array([0]*len(x))
         for i, c in enumerate(x):
+            print(f'row {i}' )
             results[i] = self._get_prediction(c)
         return results
     
     def _get_prediction(self, row):
         cur_layer = self.trees
+        print(len(row))
         while cur_layer.get('cutoff'):
+            print(cur_layer.get('cutoff'))
             if row[cur_layer['index_col']] < cur_layer['cutoff']:
                 cur_layer = cur_layer['left']
             else:
