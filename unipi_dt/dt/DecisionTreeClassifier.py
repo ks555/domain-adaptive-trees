@@ -10,7 +10,7 @@ https://medium.com/@penggongting/implementing-decision-tree-from-scratch-in-pyth
 import numpy as np 
 import math
 from sklearn.datasets import load_iris
-iris = load_iris()
+
 class DecisionTreeClassifier(object):
     def __init__(self, max_depth):
         self.depth = 0
@@ -24,13 +24,16 @@ class DecisionTreeClassifier(object):
         depth: the depth of the current layer
         """
         if par_node is None:   # base case 1: tree stops at previous level
+            print(f"parnode is none. \n{par_node}")
             return None
         elif len(y) == 0:   # base case 2: no data in this group
+            print(f"no data. \n{par_node}")
             return None
         elif self.all_same(y):   # base case 3: all y is the same in this group
             return {'val':y[0]}
         elif depth >= self.max_depth:   # base case 4: max depth reached 
-            return None
+            print(f"max depth.")
+            return {'val':np.round(np.mean(y))}
         else:   # Recursively generate trees! 
             # find one split given an information gain 
             col, cutoff, entropy = self.find_best_split_of_all(x, y)   
@@ -40,6 +43,7 @@ class DecisionTreeClassifier(object):
                         'cutoff':cutoff,
                        'val': np.round(np.mean(y))}  # save the information 
             # generate tree for the left hand side data
+            print(f"col: {cols[col]}, depth {depth+1}")
             par_node['left'] = self.fit(x[x[:, col] < cutoff], y_left, cols, {}, depth+1)   
             # right hand side trees
             par_node['right'] = self.fit(x[x[:, col] >= cutoff], y_right, cols, {}, depth+1)  
@@ -48,7 +52,7 @@ class DecisionTreeClassifier(object):
             return par_node
     
     def all_same(self, items):
-        print(items[0])
+
         return all(x == items[0] for x in items)
     
     def find_best_split_of_all(self, x, y):
@@ -56,7 +60,6 @@ class DecisionTreeClassifier(object):
         min_entropy = 1
         cutoff = None
         for i, c in enumerate(x.T):
-            print(f'Column {i}')
             entropy, cur_cutoff = self.find_best_split(c, y)
             if entropy == 0:    # find the first perfect cutoff. Stop Iterating
                 return i, cur_cutoff, entropy
@@ -64,7 +67,7 @@ class DecisionTreeClassifier(object):
                 min_entropy = entropy
                 col = i
                 cutoff = cur_cutoff
-                print(entropy)
+
         return col, cutoff, min_entropy
     
     def find_best_split(self, col, y):
@@ -89,7 +92,6 @@ class DecisionTreeClassifier(object):
         cur_layer = self.trees
         print(len(row))
         while cur_layer.get('cutoff'):
-            print(cur_layer.get('cutoff'))
             if row[cur_layer['index_col']] < cur_layer['cutoff']:
                 cur_layer = cur_layer['left']
             else:
