@@ -76,19 +76,20 @@ def main(x, y, cols, x_test = [], y_test = []):
 def print_scores(y_test, y_pred):
     print(f'Accuracy: {accuracy_score(y_test, y_pred)}')
 
-
+## attributes to encode
 to_encode = ['n_nucleo', 'negozio_comune', 'negozio_prov',
        'negozio_regione', 'negozio_tipo', 'categoria', 'cooperativa', 'sesso',
        'stato_civile', 'professione', 'titolo_studio', 'cliente_comune',
        'cliente_prov', 'cliente_regione']
 
 
-# choose load data method, last column is target
-x, y, cols = load_csv_data('..\..\..\Data\coop_04_2016_prediction_1000.csv')
+## choose load data method, last column is target
+x, y, cols = load_csv_data('..\..\..\Data\coop_04_2016_prediction_100.csv')
 # x, y, cols = load_iris_data()
 # x, y, cols = load_pickle_data('../../../Data/dataframeclean.pkl')
-# split in test and training
+## split in test and training
 x_train,x_test,y_train,y_test = split_data(x, y)
+## encode attributes listed above
 x_train, x_test = encode_attributes(x_train, x_test, y_train, to_encode)
 m, predictions = main(x_train.values, y_train.values, cols, x_test=x_test.values)
 # m = main(x_train.values, y_train.values, cols, x_test=x_test.values)

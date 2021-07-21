@@ -68,7 +68,7 @@ def encode_attributes(trn_df, sub_df, y_train, to_encode):
                                  target=y_train, 
                                  min_samples_leaf=100,
                                  smoothing=10,
-                                 noise_level=0.01)
+                                 noise_level=0)
         trn_df[a] = trn
         sub_df[a] = sub
     return(trn_df, sub_df)
