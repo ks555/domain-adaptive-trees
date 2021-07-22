@@ -96,7 +96,6 @@ m, predictions = main(x_train.values, y_train.values, cols, x_test=x_test.values
 print_scores(y_test, predictions)
 
 
-
 # create adjusted splitting criterion
 
 
