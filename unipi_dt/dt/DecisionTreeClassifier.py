@@ -84,7 +84,7 @@ class DecisionTreeClassifier(object):
     def predict(self, x):
         results = np.array([0]*len(x))
         for i, c in enumerate(x):
-            print(f'row {i}' )
+            print(f'row {i}')
             results[i] = self._get_prediction(c)
         return results
     
