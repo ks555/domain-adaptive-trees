@@ -2,7 +2,7 @@
 """
 Created on Fri Jun 25 11:13:50 2021
 
-@author: scott
+@author: scottfdfdd
 """
 
 from sklearn.datasets import load_iris, load_boston
@@ -134,9 +134,10 @@ X, y, cols = load_csv_data('E:\scott\Data\coop_04_2016_prediction_1000.csv')
 #print(X)
 #print(y)
 clf = DecisionTreeClassifier(max_depth=6)
-clf.fit(X[['importo','aliquota']], y, cols=cols)
+print("here")
+clf.fit(X.iloc[:,0:100], y, cols=cols)
 print(clf.tree)
-
+print(clf.test())
 # create adjusted splitting criterion
 
 

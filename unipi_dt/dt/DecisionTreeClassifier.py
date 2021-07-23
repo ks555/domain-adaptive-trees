@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Jun 25 11:24:42 2021 
+Created on Fri Jun 25 11:24:42 2021
 
 implementtion of decision tree adapted from 
 https://medium.com/@penggongting/implementing-decision-tree-from-scratch-in-python-c732e7c69aea
@@ -18,8 +18,12 @@ class DecisionTreeClassifier(object):
         self.tree = None
         self.depth = 0
         self.min_cases = 5
+        
+    def test(self):
+        return 'yup'
 
     def fit(self, X, y, cols):
+        print("you are not crazy")
         self.tree, self.depth = self.build(X, y, cols, depth=0)
     
     def build(self, X, y, cols, depth):
@@ -28,17 +32,19 @@ class DecisionTreeClassifier(object):
         y: target variable
         depth: the depth of the current layer
         """
+        
         if len(y) == 0:   # base case 2: no data in this group
+            print('all the same')
             return None, 0
         if self.all_same(y):   # base case 3: all y is the same in this group
-            return {'type':'leaf', 'val':y[0], 'dist': y.value_counts()}, 0
+            return {'type':'all same leaf', 'val':y[0], 'dist': y.value_counts()}, 0
         if depth >= self.max_depth:   # base case 4: max depth reached 
-            return {'type':'leaf', 'val':stats.mode(y), 'dist': y.value_counts()}, 0
+            return {'type':'max depth leaf', 'val':stats.mode(y), 'dist': y.value_counts()}, 0
         # Recursively generate trees! 
         # find one split given an information gain 
         col, cutoff, gain = self.find_best_split_of_all(X, y)   
         if col is None: # no split improves
-            return {'type':'leaf', 'val':stats.mode(y), 'dist': y.value_counts()}, 0
+            return {'type':'no improvement leaf', 'val':stats.mode(y), 'dist': y.value_counts()}, 0
         y_left = y[X[col] < cutoff]  # left hand side data
         y_right = y[X[col] >= cutoff]  # right hand side data
         par_node = {'type':'split', 'gain':gain, 
