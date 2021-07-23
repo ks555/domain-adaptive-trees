@@ -10,76 +10,92 @@ https://medium.com/@penggongting/implementing-decision-tree-from-scratch-in-pyth
 import numpy as np 
 import math
 from sklearn.datasets import load_iris
+from scipy import stats
 
 class DecisionTreeClassifier(object):
     def __init__(self, max_depth):
-        self.depth = 0
         self.max_depth = max_depth
+        self.tree = None
+        self.depth = 0
+        self.min_cases = 5
+
+    def fit(self, X, y, cols):
+        self.tree, self.depth = self.build(X, y, cols, depth=0)
     
-    def fit(self, x, y, cols, par_node={}, depth=0):
+    def build(self, X, y, cols, depth):
         """
         x: Feature set
         y: target variable
-        par_node: will be the tree generated for this x and y. 
         depth: the depth of the current layer
         """
-        if par_node is None:   # base case 1: tree stops at previous level
-            print(f"parnode is none. \n{par_node}")
-            return None
-        elif len(y) == 0:   # base case 2: no data in this group
-            print(f"no data. \n{par_node}")
-            return None
-        elif self.all_same(y):   # base case 3: all y is the same in this group
-            return {'val':y[0]}
-        elif depth >= self.max_depth:   # base case 4: max depth reached 
-            print(f"max depth.")
-            return {'val':np.round(np.mean(y))}
-        else:   # Recursively generate trees! 
-            # find one split given an information gain 
-            col, cutoff, entropy = self.find_best_split_of_all(x, y)   
-            y_left = y[x[:, col] < cutoff]  # left hand side data
-            y_right = y[x[:, col] >= cutoff]  # right hand side data
-            par_node = {'col': cols[col], 'index_col':col,
-                        'cutoff':cutoff,
-                       'val': np.round(np.mean(y))}  # save the information 
-            # generate tree for the left hand side data
-            print(f"col: {cols[col]}, depth {depth+1}")
-            par_node['left'] = self.fit(x[x[:, col] < cutoff], y_left, cols, {}, depth+1)   
-            # right hand side trees
-            par_node['right'] = self.fit(x[x[:, col] >= cutoff], y_right, cols, {}, depth+1)  
-            self.depth += 1   # increase the depth since we call fit once
-            self.trees = par_node  
-            return par_node
+        if len(y) == 0:   # base case 2: no data in this group
+            return None, 0
+        if self.all_same(y):   # base case 3: all y is the same in this group
+            return {'type':'leaf', 'val':y[0], 'dist': y.value_counts()}, 0
+        if depth >= self.max_depth:   # base case 4: max depth reached 
+            return {'type':'leaf', 'val':stats.mode(y), 'dist': y.value_counts()}, 0
+        # Recursively generate trees! 
+        # find one split given an information gain 
+        col, cutoff, gain = self.find_best_split_of_all(X, y)   
+        if col is None: # no split improves
+            return {'type':'leaf', 'val':stats.mode(y), 'dist': y.value_counts()}, 0
+        y_left = y[X[col] < cutoff]  # left hand side data
+        y_right = y[X[col] >= cutoff]  # right hand side data
+        par_node = {'type':'split', 'gain':gain, 
+                    'split_col': cols[col], 'split_idx':col,
+                    'cutoff':cutoff, 'dist': y.value_counts()}  # save the information: distribution of y
+        # generate tree for the left hand side data
+        par_node['left'], dleft = self.build(X[X[col] < cutoff], y_left, cols, depth+1)   
+        # right hand side trees
+        par_node['right'], dright = self.build(X[X[col] >= cutoff], y_right, cols, depth+1)  
+        return par_node, max(dleft, dright)+1
     
     def all_same(self, items):
-
         return all(x == items[0] for x in items)
     
-    def find_best_split_of_all(self, x, y):
-        col = None
-        min_entropy = 1
-        cutoff = None
-        for i, c in enumerate(x.T):
-            entropy, cur_cutoff = self.find_best_split(c, y)
-            if entropy == 0:    # find the first perfect cutoff. Stop Iterating
-                return i, cur_cutoff, entropy
-            elif entropy <= min_entropy:
-                min_entropy = entropy
-                col = i
-                cutoff = cur_cutoff
-
-        return col, cutoff, min_entropy
+    def find_best_split_of_all(self, X, y):
+        best_gain = 0
+        best_col = None
+        best_cutoff = None
+        for i, c in enumerate(X.columns):
+            gain, cur_cutoff = self.find_best_split_continuous(X[c], y)
+            if gain > best_gain:
+                best_gain = gain
+                best_cutoff = cur_cutoff
+                best_col = i
+        return best_col, best_cutoff, best_gain
     
-    def find_best_split(self, col, y):
-        min_entropy = 10
-        n = len(y)
-        for value in set(col):
-            y_predict = col < value
-            my_entropy = self.get_entropy(y_predict, y)
-            if my_entropy <= min_entropy:
-                min_entropy = my_entropy
-                cutoff = value
-        return min_entropy, cutoff
+    def find_best_split_continuous(self, x, y):
+        best_gain = 0
+        best_cutoff = None
+        values = np.sort(x.unique())
+        entropy_total = self.info(y)
+        n_tot = len(x)
+        for value in values:
+            cond = x < value
+            n_left = len(cond)
+            if n_left < self.min_cases:
+                continue
+            n_right = n_tot - n_left
+            if n_right < self.min_cases:
+                continue
+            entropy_left = self.info(y[cond])
+            entropy_right = self.info(y[~cond])
+            left_prop = n_left/n_tot
+            right_prop = 1 - left_prop
+            gain = entropy_total - left_prop*entropy_left - right_prop*entropy_right
+            if gain > best_gain:
+                best_gain = gain
+                best_cutoff = value
+        return best_gain, best_cutoff
+    
+    def info(self, y):
+        vc = y.value_counts()
+        tot = len(y)
+        ent = 0
+        for v in vc:
+            prop = v/tot 
+            ent -= prop*math.log2(prop)
                                            
     def predict(self, x):
         results = np.array([0]*len(x))

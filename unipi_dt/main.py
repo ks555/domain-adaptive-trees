@@ -18,7 +18,6 @@ import pickle
 import numpy as np # linear algebra
 
 
-
 def load_iris_data():
     iris = load_iris()
     x = iris.data
@@ -108,6 +107,7 @@ def __main__(file, data='csv', tree='homemade', encode='ce'):
     ## choose load data method, last column is target
     if data == 'csv':
         x, y, cols = load_csv_data(file)
+        print(cols)
     elif data == 'iris':
         x, y, cols = load_iris_data()
     elif data == 'pickle':
@@ -126,10 +126,17 @@ def __main__(file, data='csv', tree='homemade', encode='ce'):
         m, predictions = scikit_tree(x_train, y_train, x_test, y_test)
     elif tree == 'homemade':
         # works with arrays, not dataframes
-        m, predictions = homemade_tree(x_train.values, y_train.values, cols, x_test, y_test)
+        m, predictions = homemade_tree(x_train.values, y_train.values, cols, x_test.values, y_test.values)
         
 
-__main__('E:\scott\Data\coop_04_2016_prediction_100.csv')
+#__main__('E:\scott\Data\coop_04_2016_prediction_1000.csv')
+X, y, cols = load_csv_data('E:\scott\Data\coop_04_2016_prediction_1000.csv')
+#print(X)
+#print(y)
+clf = DecisionTreeClassifier(max_depth=6)
+clf.fit(X[['importo','aliquota']], y, cols=cols)
+print(clf.tree)
+
 # create adjusted splitting criterion
 
 
