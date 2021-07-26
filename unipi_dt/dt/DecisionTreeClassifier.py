@@ -18,12 +18,9 @@ class DecisionTreeClassifier(object):
         self.tree = None
         self.depth = 0
         self.min_cases = 5
-        
-    def test(self):
-        return 'yup'
+
 
     def fit(self, X, y, cols):
-        print("you are not crazy")
         self.tree, self.depth = self.build(X, y, cols, depth=0)
     
     def build(self, X, y, cols, depth):
@@ -36,8 +33,9 @@ class DecisionTreeClassifier(object):
         if len(y) == 0:   # base case 2: no data in this group
             print('all the same')
             return None, 0
+        
         if self.all_same(y):   # base case 3: all y is the same in this group
-            return {'type':'all same leaf', 'val':y[0], 'dist': y.value_counts()}, 0
+            return {'type':'all same leaf', 'val':y.iloc[0], 'dist': y.value_counts()}, 0
         if depth >= self.max_depth:   # base case 4: max depth reached 
             return {'type':'max depth leaf', 'val':stats.mode(y), 'dist': y.value_counts()}, 0
         # Recursively generate trees! 
@@ -45,19 +43,19 @@ class DecisionTreeClassifier(object):
         col, cutoff, gain = self.find_best_split_of_all(X, y)   
         if col is None: # no split improves
             return {'type':'no improvement leaf', 'val':stats.mode(y), 'dist': y.value_counts()}, 0
-        y_left = y[X[col] < cutoff]  # left hand side data
-        y_right = y[X[col] >= cutoff]  # right hand side data
+        y_left = y[X.iloc[:,col] < cutoff]  # left hand side data
+        y_right = y[X.iloc[:,col] >= cutoff]  # right hand side data
         par_node = {'type':'split', 'gain':gain, 
                     'split_col': cols[col], 'split_idx':col,
                     'cutoff':cutoff, 'dist': y.value_counts()}  # save the information: distribution of y
         # generate tree for the left hand side data
-        par_node['left'], dleft = self.build(X[X[col] < cutoff], y_left, cols, depth+1)   
+        par_node['left'], dleft = self.build(X[X.iloc[:,col] < cutoff], y_left, cols, depth+1)   
         # right hand side trees
-        par_node['right'], dright = self.build(X[X[col] >= cutoff], y_right, cols, depth+1)  
+        par_node['right'], dright = self.build(X[X.iloc[:,col] >= cutoff], y_right, cols, depth+1)  
         return par_node, max(dleft, dright)+1
     
     def all_same(self, items):
-        return all(x == items[0] for x in items)
+        return all(x == items.iloc[0] for x in items)
     
     def find_best_split_of_all(self, X, y):
         best_gain = 0
@@ -79,12 +77,40 @@ class DecisionTreeClassifier(object):
         n_tot = len(x)
         for value in values:
             cond = x < value
-            n_left = len(cond)
+            n_left = len(x[cond]) # check this KS
             if n_left < self.min_cases:
                 continue
             n_right = n_tot - n_left
             if n_right < self.min_cases:
                 continue
+            entropy_left = self.info(y[cond])
+            entropy_right = self.info(y[~cond])
+            left_prop = n_left/n_tot
+            right_prop = 1 - left_prop
+            gain = entropy_total - left_prop*entropy_left - right_prop*entropy_right
+            if gain > best_gain:
+                best_gain = gain
+                best_cutoff = value
+        return best_gain, best_cutoff
+
+    def find_best_split_discrete(self, x, y):
+        best_gain = 0
+        best_cutoff = None
+        ## get unique values
+        values = x.unique()
+        ## sort by info?
+        ## is this different than doing target encoding first??
+        entropy_total = self.info(y)
+        n_tot = len(x)
+        for value in values:
+            ## left node is x = value
+            cond = x == value
+            n_left = len(x[cond])
+            # if n_left < self.min_cases:
+            #     continue
+            n_right = n_tot - n_left
+            # if n_right < self.min_cases:
+            #     continue
             entropy_left = self.info(y[cond])
             entropy_right = self.info(y[~cond])
             left_prop = n_left/n_tot
@@ -102,11 +128,11 @@ class DecisionTreeClassifier(object):
         for v in vc:
             prop = v/tot 
             ent -= prop*math.log2(prop)
+        return ent
                                            
     def predict(self, x):
         results = np.array([0]*len(x))
         for i, c in enumerate(x):
-            print(f'row {i}')
             results[i] = self._get_prediction(c)
         return results
     

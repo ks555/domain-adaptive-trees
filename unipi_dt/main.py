@@ -130,18 +130,19 @@ def __main__(file, data='csv', tree='homemade', encode='ce'):
         
 
 #__main__('E:\scott\Data\coop_04_2016_prediction_1000.csv')
+
+to_encode = ['n_nucleo', 'negozio_comune', 'negozio_prov',
+           'negozio_regione', 'negozio_tipo', 'categoria', 'cooperativa', 'sesso',
+           'stato_civile', 'professione', 'titolo_studio', 'cliente_comune',
+           'cliente_prov', 'cliente_regione']
+## load data from csv
 X, y, cols = load_csv_data('E:\scott\Data\coop_04_2016_prediction_1000.csv')
-#print(X)
-#print(y)
+## Target encode categorical variables
+X = target_encode_ce(X, y, to_encode)
+X_train, X_test, y_train, y_test = split_data(X, y)
 clf = DecisionTreeClassifier(max_depth=6)
-print("here")
-clf.fit(X.iloc[:,0:100], y, cols=cols)
+clf.fit(X_train, y_train, cols=cols)
 print(clf.tree)
-print(clf.test())
 # create adjusted splitting criterion
-
-
-# change it all to work with pandas?
-
-# do I want to make a nice vizualization of the splits or something?
-#   maybe decide when I have a better idea of how I will analyze
+predictions = clf.predict(X_test)
+print_scores(y_test, predictions)
