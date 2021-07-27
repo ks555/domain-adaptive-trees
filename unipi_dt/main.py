@@ -137,12 +137,15 @@ to_encode = ['n_nucleo', 'negozio_comune', 'negozio_prov',
            'cliente_prov', 'cliente_regione']
 ## load data from csv
 X, y, cols = load_csv_data('E:\scott\Data\coop_04_2016_prediction_1000.csv')
+#X = X[['importo','aliquota','sconto','qta']]
+# TBD: remove 'n_nucleo' from X
 ## Target encode categorical variables
-X = target_encode_ce(X, y, to_encode)
+#X = target_encode_ce(X, y, to_encode)
+#X = X[to_encode]
 X_train, X_test, y_train, y_test = split_data(X, y)
-clf = DecisionTreeClassifier(max_depth=6)
-clf.fit(X_train, y_train, cols=cols)
+clf = DecisionTreeClassifier(max_depth=4, cat=to_encode)
+clf.fit(X_train, y_train)
 print(clf.tree)
 # create adjusted splitting criterion
-predictions = clf.predict(X_test)
-print_scores(y_test, predictions)
+# predictions = clf.predict(X_test)
+# print_scores(y_test, predictions)

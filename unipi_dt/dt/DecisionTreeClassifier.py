@@ -13,45 +13,54 @@ from sklearn.datasets import load_iris
 from scipy import stats
 
 class DecisionTreeClassifier(object):
-    def __init__(self, max_depth):
+    def __init__(self, max_depth, cat):
         self.max_depth = max_depth
         self.tree = None
         self.depth = 0
         self.min_cases = 5
+        self.cat = set(cat)
 
 
-    def fit(self, X, y, cols):
-        self.tree, self.depth = self.build(X, y, cols, depth=0)
+    def fit(self, X, y):
+        self.tree, self.depth = self.build(X, y, depth=0)
     
-    def build(self, X, y, cols, depth):
+    def build(self, X, y, depth):
         """
         x: Feature set
         y: target variable
         depth: the depth of the current layer
         """
-        
-        if len(y) == 0:   # base case 2: no data in this group
+        leny = len(y)
+        print('.', depth, leny)
+        if leny == 0:   # base case 2: no data in this group
             print('all the same')
             return None, 0
         
         if self.all_same(y):   # base case 3: all y is the same in this group
-            return {'type':'all same leaf', 'val':y.iloc[0], 'dist': y.value_counts()}, 0
+            return {'type':'leaf', 'val':y.iloc[0], 'tot':leny, 'dist': y.value_counts(sort=False)/leny}, 0
         if depth >= self.max_depth:   # base case 4: max depth reached 
-            return {'type':'max depth leaf', 'val':stats.mode(y), 'dist': y.value_counts()}, 0
+            return {'type':'leaf', 'val':stats.mode(y).mode[0], 'tot':leny, 'dist': y.value_counts(sort=False)/leny}, 0
         # Recursively generate trees! 
         # find one split given an information gain 
         col, cutoff, gain = self.find_best_split_of_all(X, y)   
         if col is None: # no split improves
-            return {'type':'no improvement leaf', 'val':stats.mode(y), 'dist': y.value_counts()}, 0
-        y_left = y[X.iloc[:,col] < cutoff]  # left hand side data
-        y_right = y[X.iloc[:,col] >= cutoff]  # right hand side data
+            return {'type':'leaf', 'val':stats.mode(y).mode[0], 'tot':leny, 'dist': y.value_counts(sort=False)/leny}, 0
+        if col in self.cat:
+            cond = X[col] == cutoff
+        else:
+            cond = X[col] < cutoff
+        X_left = X[cond]
+        X_right = X[~cond]
+        y_left = y[cond]  # left hand side data
+        y_right = y[~cond]  # right hand side data
+        print('split', col, gain, cutoff)
         par_node = {'type':'split', 'gain':gain, 
-                    'split_col': cols[col], 'split_idx':col,
-                    'cutoff':cutoff, 'dist': y.value_counts()}  # save the information: distribution of y
+                    'split_col': col,
+                    'cutoff':cutoff, 'tot':leny, 'dist': y.value_counts(sort=False)/leny}  # save the information: distribution of y
         # generate tree for the left hand side data
-        par_node['left'], dleft = self.build(X[X.iloc[:,col] < cutoff], y_left, cols, depth+1)   
+        par_node['left'], dleft = self.build(X_left, y_left, depth+1)   
         # right hand side trees
-        par_node['right'], dright = self.build(X[X.iloc[:,col] >= cutoff], y_right, cols, depth+1)  
+        par_node['right'], dright = self.build(X_right, y_right, depth+1)  
         return par_node, max(dleft, dright)+1
     
     def all_same(self, items):
@@ -61,23 +70,30 @@ class DecisionTreeClassifier(object):
         best_gain = 0
         best_col = None
         best_cutoff = None
-        for i, c in enumerate(X.columns):
-            gain, cur_cutoff = self.find_best_split_continuous(X[c], y)
+        for c in X.columns:
+            ## proposal - target encode discrete prior to building DT
+            ## send mappings of value / encoded value to DT
+            ## to calculate gain, if c is a 'treated' attribute, map back to values to include stats data adjustment
+            is_cat = c in self.cat
+            gain, cur_cutoff = self.find_best_split_attribute(X[c], y, is_cat)
             if gain > best_gain:
                 best_gain = gain
                 best_cutoff = cur_cutoff
-                best_col = i
+                best_col = c
         return best_col, best_cutoff, best_gain
     
-    def find_best_split_continuous(self, x, y):
+    def find_best_split_attribute(self, x, y, is_cat):
         best_gain = 0
         best_cutoff = None
-        values = np.sort(x.unique())
+        if is_cat:
+            values = x.unique()
+        else:
+            values = np.sort(x.unique())
         entropy_total = self.info(y)
         n_tot = len(x)
         for value in values:
-            cond = x < value
-            n_left = len(x[cond]) # check this KS
+            cond = x == value if is_cat else x < value 
+            n_left = sum(cond) 
             if n_left < self.min_cases:
                 continue
             n_right = n_tot - n_left
@@ -93,33 +109,33 @@ class DecisionTreeClassifier(object):
                 best_cutoff = value
         return best_gain, best_cutoff
 
-    def find_best_split_discrete(self, x, y):
-        best_gain = 0
-        best_cutoff = None
-        ## get unique values
-        values = x.unique()
-        ## sort by info?
-        ## is this different than doing target encoding first??
-        entropy_total = self.info(y)
-        n_tot = len(x)
-        for value in values:
-            ## left node is x = value
-            cond = x == value
-            n_left = len(x[cond])
-            # if n_left < self.min_cases:
-            #     continue
-            n_right = n_tot - n_left
-            # if n_right < self.min_cases:
-            #     continue
-            entropy_left = self.info(y[cond])
-            entropy_right = self.info(y[~cond])
-            left_prop = n_left/n_tot
-            right_prop = 1 - left_prop
-            gain = entropy_total - left_prop*entropy_left - right_prop*entropy_right
-            if gain > best_gain:
-                best_gain = gain
-                best_cutoff = value
-        return best_gain, best_cutoff
+    # def find_best_split_discrete(self, x, y):
+    #     best_gain = 0
+    #     best_cutoff = None
+    #     ## get unique values
+    #     values = x.unique()
+    #     ## sort by info?
+    #     ## is this different than doing target encoding first??
+    #     entropy_total = self.info(y)
+    #     n_tot = len(x)
+    #     for value in values:
+    #         ## left node is x = value
+    #         cond = x == value
+    #         n_left = len(x[cond])
+    #         # if n_left < self.min_cases:
+    #         #     continue
+    #         n_right = n_tot - n_left
+    #         # if n_right < self.min_cases:
+    #         #     continue
+    #         entropy_left = self.info(y[cond])
+    #         entropy_right = self.info(y[~cond])
+    #         left_prop = n_left/n_tot
+    #         right_prop = 1 - left_prop
+    #         gain = entropy_total - left_prop*entropy_left - right_prop*entropy_right
+    #         if gain > best_gain:
+    #             best_gain = gain
+    #             best_cutoff = value
+    #     return best_gain, best_cutoff
     
     def info(self, y):
         vc = y.value_counts()
@@ -130,9 +146,9 @@ class DecisionTreeClassifier(object):
             ent -= prop*math.log2(prop)
         return ent
                                            
-    def predict(self, x):
-        results = np.array([0]*len(x))
-        for i, c in enumerate(x):
+    def predict(self, X):
+        results = np.array([0]*len(X))
+        for i, c in enumerate(X):
             results[i] = self._get_prediction(c)
         return results
     
@@ -140,10 +156,11 @@ class DecisionTreeClassifier(object):
         cur_layer = self.trees
         print(len(row))
         while cur_layer.get('cutoff'):
-            if row[cur_layer['index_col']] < cur_layer['cutoff']:
-                cur_layer = cur_layer['left']
-            else:
-                cur_layer = cur_layer['right']
+            col = cur_layer['split_col']
+            cutoff = cur_layer['cutoff']
+            is_cat = col in self.cat
+            left = row[col] == cutoff if is_cat else row[col] < cutoff
+            cur_layer = cur_layer['left'] if left else cur_layer['right']
         else:
             return cur_layer.get('val')
 
