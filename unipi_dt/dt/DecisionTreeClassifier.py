@@ -11,6 +11,7 @@ import numpy as np
 import math
 from sklearn.datasets import load_iris
 from scipy import stats
+import pandas as pd
 
 class DecisionTreeClassifier(object):
     def __init__(self, max_depth, cat):
@@ -23,6 +24,7 @@ class DecisionTreeClassifier(object):
 
     def fit(self, X, y):
         self.tree, self.depth = self.build(X, y, depth=0)
+        
     
     def build(self, X, y, depth):
         """
@@ -63,8 +65,10 @@ class DecisionTreeClassifier(object):
         par_node['right'], dright = self.build(X_right, y_right, depth+1)  
         return par_node, max(dleft, dright)+1
     
+    
     def all_same(self, items):
         return all(x == items.iloc[0] for x in items)
+    
     
     def find_best_split_of_all(self, X, y):
         best_gain = 0
@@ -81,6 +85,7 @@ class DecisionTreeClassifier(object):
                 best_cutoff = cur_cutoff
                 best_col = c
         return best_col, best_cutoff, best_gain
+    
     
     def find_best_split_attribute(self, x, y, is_cat):
         best_gain = 0
@@ -108,34 +113,7 @@ class DecisionTreeClassifier(object):
                 best_gain = gain
                 best_cutoff = value
         return best_gain, best_cutoff
-
-    # def find_best_split_discrete(self, x, y):
-    #     best_gain = 0
-    #     best_cutoff = None
-    #     ## get unique values
-    #     values = x.unique()
-    #     ## sort by info?
-    #     ## is this different than doing target encoding first??
-    #     entropy_total = self.info(y)
-    #     n_tot = len(x)
-    #     for value in values:
-    #         ## left node is x = value
-    #         cond = x == value
-    #         n_left = len(x[cond])
-    #         # if n_left < self.min_cases:
-    #         #     continue
-    #         n_right = n_tot - n_left
-    #         # if n_right < self.min_cases:
-    #         #     continue
-    #         entropy_left = self.info(y[cond])
-    #         entropy_right = self.info(y[~cond])
-    #         left_prop = n_left/n_tot
-    #         right_prop = 1 - left_prop
-    #         gain = entropy_total - left_prop*entropy_left - right_prop*entropy_right
-    #         if gain > best_gain:
-    #             best_gain = gain
-    #             best_cutoff = value
-    #     return best_gain, best_cutoff
+    
     
     def info(self, y):
         vc = y.value_counts()
@@ -145,16 +123,20 @@ class DecisionTreeClassifier(object):
             prop = v/tot 
             ent -= prop*math.log2(prop)
         return ent
+    
                                            
     def predict(self, X):
-        results = np.array([0]*len(X))
-        for i, c in enumerate(X):
-            results[i] = self._get_prediction(c)
+        # results = np.array([0]*len(X))
+        # results = pd.DataFrame(columns=['pred', 'prob'])
+        results = pd.DataFrame({'prediction': pd.Series([], dtype='float'),
+                                'probability': pd.Series([], dtype='float')})
+        for i, r in enumerate(X.itertuples(index=False)):
+            results.loc[i] = self._get_prediction(X.iloc[i])
         return results
     
+    
     def _get_prediction(self, row):
-        cur_layer = self.trees
-        print(len(row))
+        cur_layer = self.tree
         while cur_layer.get('cutoff'):
             col = cur_layer['split_col']
             cutoff = cur_layer['cutoff']
@@ -162,13 +144,15 @@ class DecisionTreeClassifier(object):
             left = row[col] == cutoff if is_cat else row[col] < cutoff
             cur_layer = cur_layer['left'] if left else cur_layer['right']
         else:
-            return cur_layer.get('val')
+            return [cur_layer.get('val'), cur_layer.get('dist')]
+        
 
     def entropy_func(self, c, n):
         """
         The math formula
         """
         return -(c*1.0/n)*math.log(c*1.0/n, 2)
+    
     
     def entropy_cal(self, c1, c2):
         """
@@ -179,6 +163,7 @@ class DecisionTreeClassifier(object):
         if c1== 0 or c2 == 0:  # when there is only one class in the group, entropy is 0
             return 0
         return self.entropy_func(c1, c1+c2) + self.entropy_func(c2, c1+c2)
+    
     
     # get the entropy of one big circle showing above
     def entropy_of_one_division(self, division): 
@@ -194,6 +179,7 @@ class DecisionTreeClassifier(object):
             e = n_c*1.0/n * self.entropy_cal(sum(division==c), sum(division!=c)) # weighted avg
             s += e
         return s, n
+    
     
     # The whole entropy of two big circles combined
     def get_entropy(self, y_predict, y_real):

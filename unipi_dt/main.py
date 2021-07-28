@@ -16,7 +16,9 @@ import category_encoders as ce
 import pandas as pd
 import pickle
 import numpy as np # linear algebra
+import time
 
+start_time = time.time()
 
 def load_iris_data():
     iris = load_iris()
@@ -96,6 +98,8 @@ def scikit_tree(x_train, y_train, x_test, y_test):
 
 def print_scores(y_test, y_pred):
     print(f'Accuracy: {accuracy_score(y_test, y_pred)}')
+    return accuracy_score(y_test, y_pred)
+    
 
 
 def __main__(file, data='csv', tree='homemade', encode='ce'):
@@ -136,7 +140,7 @@ to_encode = ['n_nucleo', 'negozio_comune', 'negozio_prov',
            'stato_civile', 'professione', 'titolo_studio', 'cliente_comune',
            'cliente_prov', 'cliente_regione']
 ## load data from csv
-X, y, cols = load_csv_data('E:\scott\Data\coop_04_2016_prediction_1000.csv')
+X, y, cols = load_csv_data('E:\scott\Data\coop_04_2016_prediction_min_uncor_50000.csv')
 #X = X[['importo','aliquota','sconto','qta']]
 # TBD: remove 'n_nucleo' from X
 ## Target encode categorical variables
@@ -145,7 +149,11 @@ X, y, cols = load_csv_data('E:\scott\Data\coop_04_2016_prediction_1000.csv')
 X_train, X_test, y_train, y_test = split_data(X, y)
 clf = DecisionTreeClassifier(max_depth=4, cat=to_encode)
 clf.fit(X_train, y_train)
-print(clf.tree)
+pprint(clf.tree)
 # create adjusted splitting criterion
-# predictions = clf.predict(X_test)
-# print_scores(y_test, predictions)
+predictions = clf.predict(X_test)
+accuracy = print_scores(y_test, predictions['prediction'])
+
+with open('timing.csv','a') as fd:
+    fd.write(f"{round(time.time() - start_time, 2)} seconds --- rows {X.shape[0]} cols {X.shape[1]} Acc {accuracy} \n")
+
