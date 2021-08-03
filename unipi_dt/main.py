@@ -140,12 +140,12 @@ to_encode = ['n_nucleo', 'negozio_comune', 'negozio_prov',
            'stato_civile', 'professione', 'titolo_studio', 'cliente_comune',
            'cliente_prov', 'cliente_regione']
 ## load data from csv
-X, y, cols = load_csv_data('E:\scott\Data\coop_04_2016_prediction_min_uncor_50000.csv')
-#X = X[['importo','aliquota','sconto','qta']]
-# TBD: remove 'n_nucleo' from X
-## Target encode categorical variables
-#X = target_encode_ce(X, y, to_encode)
-#X = X[to_encode]
+X, y, cols = load_csv_data('E:\scott\Data\coop_04_2016_prediction_1000.csv')
+## Load istat data
+age_data = pd.read_csv('E:\scott\Data\ISTAT_AGE_GENDER.csv')
+marital_data = pd.read_csv('E:\scott\Data\ISTAT_MARITAL.csv')
+
+
 X_train, X_test, y_train, y_test = split_data(X, y)
 clf = DecisionTreeClassifier(max_depth=4, cat=to_encode)
 clf.fit(X_train, y_train)
@@ -153,6 +153,8 @@ pprint(clf.tree)
 # create adjusted splitting criterion
 predictions = clf.predict(X_test)
 accuracy = print_scores(y_test, predictions['prediction'])
+
+
 
 with open('timing.csv','a') as fd:
     fd.write(f"{round(time.time() - start_time, 2)} seconds --- rows {X.shape[0]} cols {X.shape[1]} Acc {accuracy} \n")
