@@ -155,7 +155,6 @@ predictions = clf.predict(X_test)
 accuracy = print_scores(y_test, predictions['prediction'])
 
 
-#yeadfds
 with open('timing.csv','a') as fd:
     fd.write(f"{round(time.time() - start_time, 2)} seconds --- rows {X.shape[0]} cols {X.shape[1]} Acc {accuracy} \n")
 
