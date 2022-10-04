@@ -11,3 +11,6 @@ Work in Progress
 
 
 **dt folder**: has the decision tree implementation, plus encoding.py which is involved in encoding categorical variables - I know we considered and tried various things and I don't remember what we settled on exactly.
+
+
+The branches: **splitting** has been merged with master - can probably go away. The others, I am not ready to delete before checking but likely can be abandoned...
