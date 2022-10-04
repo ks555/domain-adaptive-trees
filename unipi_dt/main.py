@@ -2,7 +2,7 @@
 """
 Created on Fri Jun 25 11:13:50 2021
 
-@author: scottfdfdd
+@author: scott
 """
 
 from sklearn.datasets import load_iris, load_boston
@@ -133,17 +133,17 @@ def __main__(file, data='csv', tree='homemade', encode='ce'):
         m, predictions = homemade_tree(x_train.values, y_train.values, cols, x_test.values, y_test.values)
         
 
-#__main__('E:\scott\Data\coop_04_2016_prediction_1000.csv')
+#__main__('data\coop\coop_04_2016_prediction_1000.csv')
 
 to_encode = ['n_nucleo', 'negozio_comune', 'negozio_prov',
            'negozio_regione', 'negozio_tipo', 'categoria', 'cooperativa', 'sesso',
            'stato_civile', 'professione', 'titolo_studio', 'cliente_comune',
            'cliente_prov', 'cliente_regione']
 ## load data from csv
-X, y, cols = load_csv_data('E:\scott\Data\coop_04_2016_prediction_1000.csv')
+X, y, cols = load_csv_data('data/coop/coop_04_2016_prediction_1000.csv')
 ## Load istat data
-age_data = pd.read_csv('E:\scott\Data\ISTAT_AGE_GENDER.csv')
-marital_data = pd.read_csv('E:\scott\Data\ISTAT_MARITAL.csv')
+age_data = pd.read_csv('data/istat/ISTAT_AGE_GENDER.csv')
+marital_data = pd.read_csv('data/istat/ISTAT_MARITAL.csv')
 
 
 X_train, X_test, y_train, y_test = split_data(X, y)
