@@ -1,2 +1,4 @@
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
 __pycache__
 /unipi_dt/dt/__init__.py.txt
