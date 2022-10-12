@@ -18,7 +18,9 @@ import pickle
 import numpy as np # linear algebra
 import time
 
+
 start_time = time.time()
+
 
 def load_iris_data():
     iris = load_iris()
@@ -101,7 +103,6 @@ def print_scores(y_test, y_pred):
     return accuracy_score(y_test, y_pred)
     
 
-
 def __main__(file, data='csv', tree='homemade', encode='ce'):
     ## attributes to encode
     to_encode = ['n_nucleo', 'negozio_comune', 'negozio_prov',
@@ -155,6 +156,6 @@ predictions = clf.predict(X_test)
 accuracy = print_scores(y_test, predictions['prediction'])
 
 
-with open('timing.csv','a') as fd:
+with open('timing.csv', 'a') as fd:
     fd.write(f"{round(time.time() - start_time, 2)} seconds --- rows {X.shape[0]} cols {X.shape[1]} Acc {accuracy} \n")
 
