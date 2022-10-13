@@ -48,6 +48,7 @@ RAC1P (Recoded detailed race code, 9 possible values)
 #   For example, branch split on gender, then income, now we need gender proportion
 #   Query the Location Demographics table for that by querying in that order
 
+
 def get_population(locations, gender_thresh=None, race=None, age_thresh=None, income_thresh=None, income_lower=False):
     if gender_thresh:
         pass
@@ -56,6 +57,7 @@ def get_population(locations, gender_thresh=None, race=None, age_thresh=None, in
         pass
 
     if income_thresh:
+        pass
         ## for each location in list, acquire proportion of pop in the income bracket of interest
         ## return the proportions as a list
 
@@ -63,7 +65,8 @@ def get_population(locations, gender_thresh=None, race=None, age_thresh=None, in
         ## of the pop that are in one income range (the one indicated by income_thresh).
         ## income_lower true means that you want to calculate the proportion of the pop with
         ## income lower than income_thresh (so all of the income ranges below your threshold)
-        return get_income(locations, income_thresh, income_lower)
+        return locations, income_thresh, income_lower
+
 
 def get_gender(locations):
     pop_proportions = []
@@ -72,6 +75,7 @@ def get_gender(locations):
         gender_slice = df_income.xs(get_location_code(location), level='ITTER107', axis=1, drop_level=True)
         pop_proportions.append(get_proportion_income(income_slice, income_thresh, income_lower))
     return pop_proportions
+
 
 def get_proportion_income(income_slice, income_thresh, income_lower, year_index=4):
     total = sum(income_slice.iloc[year_index, 0:8])
@@ -101,6 +105,6 @@ def get_proportion_income(income_slice, income_thresh, income_lower, year_index=
     ## income_lower true means that you want to calculate the proportion of the pop with
     ## income lower than income_thresh (so all of the income ranges below your threshold)
     if income_lower:
-        return (sum(income_slice.iloc[year_index,0:col+1])+income_slice.iloc[4,7])/total
+        return (sum(income_slice.iloc[year_index, v0:col+1])+income_slice.iloc[4, 7])/total
     else:
-        return sum(income_slice.iloc[year_index,col:7])/total
+        return sum(income_slice.iloc[year_index, col:7])/total
