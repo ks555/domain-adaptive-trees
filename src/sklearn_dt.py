@@ -69,7 +69,7 @@ for i in range(n_nodes):
 
 
 # decision path
-node_indicator = clf.decision_path(X_test)
+node_indicator = clf.decision_path(X_test)  # TODO: check this decision_path method for conditional penalties
 lead_id = clf.apply(X_test)
 
 sample_id = 0
