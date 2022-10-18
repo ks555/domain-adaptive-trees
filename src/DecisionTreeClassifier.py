@@ -13,6 +13,7 @@ from sklearn.datasets import load_iris
 from scipy import stats
 import pandas as pd
 
+
 class DecisionTreeClassifier(object):
     def __init__(self, max_depth, cat):
         self.max_depth = max_depth
@@ -21,11 +22,9 @@ class DecisionTreeClassifier(object):
         self.min_cases = 5
         self.cat = set(cat)
 
-
     def fit(self, X, y):
         self.tree, self.depth = self.build(X, y, depth=0)
-        
-    
+
     def build(self, X, y, depth):
         """
         x: Feature set
@@ -64,12 +63,10 @@ class DecisionTreeClassifier(object):
         # right hand side trees
         par_node['right'], dright = self.build(X_right, y_right, depth+1)  
         return par_node, max(dleft, dright)+1
-    
-    
+
     def all_same(self, items):
         return all(x == items.iloc[0] for x in items)
-    
-    
+
     def find_best_split_of_all(self, X, y):
         best_gain = 0
         best_col = None
@@ -85,8 +82,7 @@ class DecisionTreeClassifier(object):
                 best_cutoff = cur_cutoff
                 best_col = c
         return best_col, best_cutoff, best_gain
-    
-    
+
     def find_best_split_attribute(self, x, y, is_cat):
         best_gain = 0
         best_cutoff = None
@@ -113,8 +109,7 @@ class DecisionTreeClassifier(object):
                 best_gain = gain
                 best_cutoff = value
         return best_gain, best_cutoff
-    
-    
+
     def info(self, y):
         vc = y.value_counts()
         tot = len(y)
@@ -123,8 +118,7 @@ class DecisionTreeClassifier(object):
             prop = v/tot 
             ent -= prop*math.log2(prop)
         return ent
-    
-                                           
+
     def predict(self, X):
         # results = np.array([0]*len(X))
         # results = pd.DataFrame(columns=['pred', 'prob'])
@@ -133,8 +127,7 @@ class DecisionTreeClassifier(object):
         for i, r in enumerate(X.itertuples(index=False)):
             results.loc[i] = self._get_prediction(X.iloc[i])
         return results
-    
-    
+
     def _get_prediction(self, row):
         cur_layer = self.tree
         while cur_layer.get('cutoff'):
@@ -145,15 +138,13 @@ class DecisionTreeClassifier(object):
             cur_layer = cur_layer['left'] if left else cur_layer['right']
         else:
             return [cur_layer.get('val'), cur_layer.get('dist')]
-        
 
     def entropy_func(self, c, n):
         """
         The math formula
         """
         return -(c*1.0/n)*math.log(c*1.0/n, 2)
-    
-    
+
     def entropy_cal(self, c1, c2):
         """
         Returns entropy of a group of data
@@ -163,8 +154,7 @@ class DecisionTreeClassifier(object):
         if c1== 0 or c2 == 0:  # when there is only one class in the group, entropy is 0
             return 0
         return self.entropy_func(c1, c1+c2) + self.entropy_func(c2, c1+c2)
-    
-    
+
     # get the entropy of one big circle showing above
     def entropy_of_one_division(self, division): 
         """
@@ -179,13 +169,12 @@ class DecisionTreeClassifier(object):
             e = n_c*1.0/n * self.entropy_cal(sum(division==c), sum(division!=c)) # weighted avg
             s += e
         return s, n
-    
-    
+
     # The whole entropy of two big circles combined
     def get_entropy(self, y_predict, y_real):
         """
         Returns entropy of a split
-        y_predict is the split decision, True/Fasle, and y_true can be multi class
+        y_predict is the split decision, True/False, and y_true can be multi class
         """
         if len(y_predict) != len(y_real):
             print('They have to be the same length')

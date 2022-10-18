@@ -34,6 +34,7 @@ from ._utils cimport WeightedMedianCalculator
 # EPSILON is used in the Poisson criterion
 cdef double EPSILON = 10 * np.finfo('double').eps
 
+# TODO: refactor to python
 cdef class Criterion:
     """Interface for impurity criteria.
 
@@ -197,7 +198,7 @@ cdef class Criterion:
                                  - (self.weighted_n_left /
                                     self.weighted_n_node_samples * impurity_left)))
 
-
+# TODO: refactor to python
 cdef class ClassificationCriterion(Criterion):
     """Abstract criterion for classification."""
 
@@ -434,7 +435,7 @@ cdef class ClassificationCriterion(Criterion):
             memcpy(dest, &self.sum_total[k, 0], self.n_classes[k] * sizeof(double))
             dest += self.max_n_classes
 
-
+# TODO: refactor to python
 cdef class Entropy(ClassificationCriterion):
     r"""Cross Entropy impurity criterion.
 
