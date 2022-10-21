@@ -10,12 +10,11 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn import tree
 from pprint import pprint
-import DecisionTreeClassifier
+from src.decision_tree_classifier import DecisionTreeClassifier
 from encoding import encode_attributes
 import category_encoders as ce
 import pandas as pd
 import pickle
-import numpy as np # linear algebra
 import time
 
 
