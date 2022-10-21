@@ -3,7 +3,7 @@ from typing import List, Dict
 from pandas import DataFrame
 
 
-def get_current_path(subtree: DecisionTreeClassifier, ) -> List[str]:
+def get_current_path(subtree: DecisionTreeClassifier, ) -> Dict[str, str]:
     # TODO
     pass
 

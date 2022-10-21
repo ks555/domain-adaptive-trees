@@ -1,6 +1,6 @@
 
 # from scikit-learn/sklearn/tree/_criterion.pyx; referenced in tree\_criterion.pxd
-# todo: refactor main functionalities into python? hence, the name innefficient criterion
+# todo: refactor main functionalities into python?
 
 
 # Authors: Gilles Louppe <g.louppe@gmail.com>
