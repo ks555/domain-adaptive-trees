@@ -7,7 +7,7 @@ Created on Tue Aug  3 10:30:36 2021
 import pickle
 import pandas as pd
 
-
+# todo: this should be under the get_p_target class (lower levels in the project)
 df_locations = pickle.load(open('../../../Data/istat/CL_ITTER107.pkl', 'rb'))
 df_income = pickle.load(open('../../../Data/istat/dataflow_income.pkl', 'rb'))
 df_age_gender = pickle.load(open('../../../Data/istat/dataflow_age_gender.pkl', 'rb'))
