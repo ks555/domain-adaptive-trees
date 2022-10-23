@@ -184,3 +184,16 @@ class DecisionTreeClassifier(object):
         s_false, n_false = self.entropy_of_one_division(y_real[~y_predict]) # right hand side entropy
         s = n_true*1.0/n * s_true + n_false*1.0/n * s_false # overall entropy, again weighted average
         return s
+
+
+if __name__ == "__main__":
+    print("Hello, World!")
+    iris = load_iris()
+
+    X = iris.data
+    y = iris.target
+
+    clf = DecisionTreeClassifier(max_depth=7)
+    m = clf.fit(X, y)
+    print(m)
+
