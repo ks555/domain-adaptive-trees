@@ -1,6 +1,7 @@
 import math
 
 
+# entropy functions from Medium post
 def entropy_func(c, n):
     """
     The math formula

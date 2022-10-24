@@ -10,9 +10,8 @@ class DecisionTreeClassifier(object):
         self.depth = 0
         self.max_depth = max_depth
         self.trees = None
-        # todo: feed vs store the external information?  maybe at the fit level?
 
-    def fit(self, x: np.ndarray, y: np.ndarray, par_node={}, depth=0): # todo: remove par_node from here?
+    def fit(self, x: np.ndarray, y: np.ndarray, par_node={}, depth=0):
 
         # par_node = {} if None else par_node
 
@@ -30,15 +29,15 @@ class DecisionTreeClassifier(object):
             y_left = y[x[:, col] < cutoff]
             y_right = y[x[:, col] >= cutoff]
             # todo: self.current_tree
-            par_node = {'col': iris.feature_names[col],  # todo: this is dumb!!! feed df into class
+            par_node = {'col': iris.feature_names[col],  # todo
                         'index_col': col,
                         'cutoff': cutoff,
                         'val': np.round(np.mean(y))
-                        } # todo: add intermediate step here that keep track of the growing tree | maybe at counter also? or used depth!
-            par_node['left'] = self.fit(x[x[:, col] < cutoff], y_left, {}, depth + 1)  # tricky to follow as the function is recursive within itself...
+                        }
+            par_node['left'] = self.fit(x[x[:, col] < cutoff], y_left, {}, depth + 1)
             par_node['right'] = self.fit(x[x[:, col] >= cutoff], y_right, {}, depth + 1)
             self.depth += 1
-            self.trees = par_node  # this is only at the end... we're not tracking the path todo: see sklearn for this
+            self.trees = par_node  # this is only at the end... we're not tracking the path
             return par_node
 
     def find_best_split_of_all(self, x, y):
@@ -72,7 +71,7 @@ class DecisionTreeClassifier(object):
         return all(x == items[0] for x in items)
 
     def predict(self, x):
-        tree = self.trees  # todo where do we use the tree? this lines can go imo
+        tree = self.trees
         results = np.array([0] * len(x))
         for i, c in enumerate(x):
             results[i] = self._get_prediction(c)

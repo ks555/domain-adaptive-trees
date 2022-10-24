@@ -115,22 +115,22 @@ class DecisionTreeClassifier(object):
                 best_cutoff = value
         return best_gain, best_cutoff
 
-    def info(self, y):  # todo: \lambda: float, da_prop: float as input
+    def info(self, y):  # for H(T) part of IG
         vc = y.value_counts()
         tot = len(y)
         ent = 0
         for v in vc:
-            prop = v / tot # da_prop = (\lambda*prop_d + (1 - \lambda)*prop_t)
-            ent -= prop * math.log2(prop)  # da_ent -= da_prop * math.log2(da_prop)
+            prop = v / tot
+            ent -= prop * math.log2(prop)
         return ent
 
-    def da_info(self, y, alpha: float, t_prop: float):  # len(t_prop) == len(vc)?
+    def da_info(self, y, alpha: float, t_prop: float):  # for H(T|A=a) part of IG
         vc = y.value_counts()
         tot = len(y)
         ent = 0
         for v in vc:
             s_prop = v / tot
-            da_prop = (alpha*s_prop + (1 - alpha)*t_prop)
+            da_prop = (alpha*s_prop + (1 - alpha)*t_prop)  # todo: do we have to loop over t_prop using v?
             ent -= da_prop * math.log2(da_prop)
         return ent
 
@@ -218,7 +218,7 @@ def print_scores(y_test, y_pred):
 
 if __name__ == "__main__":
     iris = load_iris()
-    boston = load_boston()
+    # boston = load_boston()
 
     from pprint import pprint
 
