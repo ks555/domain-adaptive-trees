@@ -8,7 +8,6 @@ https://medium.com/@penggongting/implementing-decision-tree-from-scratch-in-pyth
 
 import numpy as np
 import math
-from sklearn.datasets import load_iris, load_boston
 from scipy import stats
 import pandas as pd
 from typing import List
@@ -16,17 +15,18 @@ from pandas import DataFrame, Series
 
 
 class DecisionTreeClassifier(object):
-    def __init__(self, max_depth, cat: List[str]):
+    def __init__(self, max_depth: int, cat: List[str] = None):
         self.max_depth = max_depth
         self.tree = None
         self.depth = 0
         self.min_cases = 5
+        cat = [] if cat is None else cat
         self.cat = set(cat)
 
-    def fit(self, X: DataFrame, y: Series):
+    def fit(self, X: DataFrame, y: Series, alpha: float = 1.0, ):  # if alpha=1, da_prop = s_prop | todo: add_info DF
         self.tree, self.depth = self.build(X, y, depth=0)
 
-    def build(self, X, y, depth):
+    def build(self, X: DataFrame, y: Series, depth: int):
         """
         x: Feature set
         y: target variable
@@ -202,24 +202,13 @@ class DecisionTreeClassifier(object):
 
 
 # todo
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
-
-
-def split_data(x, y, size=0.5, rs=123):
-    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=size, random_state=rs)
-    return x_train, x_test, y_train, y_test
-
-
-def print_scores(y_test, y_pred):
-    print(f'Accuracy: {accuracy_score(y_test, y_pred)}')
-    return accuracy_score(y_test, y_pred)
-
 
 if __name__ == "__main__":
+    from sklearn.datasets import load_iris, load_boston
     iris = load_iris()
     # boston = load_boston()
 
+    from tools import *
     from pprint import pprint
 
     # X = iris.data
