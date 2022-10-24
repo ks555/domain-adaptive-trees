@@ -6,13 +6,13 @@ from _entropy import *
 
 
 class DecisionTreeClassifier(object):
-    def __init__(self, max_depth):  # maybe feed df and then tka eth values from it and store columns | what about diff column types?
+    def __init__(self, max_depth: int):
         self.depth = 0
         self.max_depth = max_depth
         self.trees = None
         # todo: feed vs store the external information?  maybe at the fit level?
 
-    def fit(self, x: np.ndarray, y: np.ndarray, par_node={}, depth=0):
+    def fit(self, x: np.ndarray, y: np.ndarray, par_node={}, depth=0): # todo: remove par_node from here?
 
         # par_node = {} if None else par_node
 
