@@ -70,6 +70,12 @@ PINCP (Total person’s income): Range of values:
 – loss of $19998 or more is coded as -19998.
 – income of $4209995 or more is coded as 4209995.
 
+
+def get_population(locations, gender_thresh=None, race=None, age_thresh=None, income_thresh=None, income_lower=False):
+    if gender_thresh:
+        pass
+
+
 SEX (Sex): Range of values:
 – 1: Male
 – 2: Female
@@ -82,4 +88,5 @@ acs_data = utils.load_data(['AL', 'CA'], '2017', '1-Year', 'person')
 # load task - just makes numpy arrays of features, labels, protected group category for given task
 # features, labels, group = utils.load_task(acs_data, ft.ACSPublicCoverage)
 pop_data = acs_data[['SEX', 'RAC1P', 'PINCP', 'AGEP']]
+
 
