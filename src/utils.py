@@ -46,11 +46,17 @@ def load_task(acs_data, task=ft.ACSPublicCoverage):
 # so input table should be for one location only
 def get_proportion_groupby(pop_data, group_column, threshold=None):
     if threshold is not None:
-        pop_data.loc[pop_data['PINCP'] > threshold, 'above_threshold'] = True
-        pop_data.loc[pop_data['PINCP'] <= threshold, 'above_threshold'] = False
+        pop_data.loc[pop_data[group_column] > threshold, 'above_threshold'] = True
+        pop_data.loc[pop_data[group_column] <= threshold, 'above_threshold'] = False
         group_column = 'above_threshold'
     proportions = pop_data.groupby([group_column]).size()
     return proportions.values/len(pop_data)
 
 
+acs_data = load_data(['AL', 'CA'], '2017', '1-Year', 'person')
+# load task - just makes numpy arrays of features, labels, protected group category for given task
+# features, labels, group = utils.load_task(acs_data, ft.ACSPublicCoverage)
+pop_data = acs_data[['SEX', 'RAC1P', 'PINCP', 'AGEP']]
 
+# path will be col, split value, cat yes or no - over multiple splits
+# Use path to query, seqeuntially, to narrow down the data, then send to groupby

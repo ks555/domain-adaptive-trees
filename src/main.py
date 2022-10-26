@@ -24,16 +24,16 @@ start_time = time.time()
 
 def load_iris_data():
     iris = load_iris()
-    x = iris.data
-    y = iris.target
+    x = pd.DataFrame(iris.data)
+    y = pd.Series(iris.target)
     cols = iris.feature_names
     return x, y, cols
 
 
 def load_boston_data():
     boston = load_boston()
-    x = boston.data
-    y = boston.target
+    x = pd.DataFrame(boston.data)
+    y = pd.Series(boston.target)
     cols = boston.feature_names
     return x, y, cols
 
@@ -141,7 +141,11 @@ to_encode = ['n_nucleo', 'negozio_comune', 'negozio_prov',
            'stato_civile', 'professione', 'titolo_studio', 'cliente_comune',
            'cliente_prov', 'cliente_regione']
 ## load data from csv
-X, y, cols = load_csv_data('../data/coop/coop_04_2016_prediction_1000.csv')
+# X, y, cols = load_csv_data('../data/coop/coop_04_2016_prediction_1000.csv')
+
+## load iris data
+X, y, cols = load_boston_data()
+
 ## Load istat data
 age_data = pd.read_csv('../data/istat/ISTAT_AGE_GENDER.csv')
 marital_data = pd.read_csv('../data/istat/ISTAT_MARITAL.csv')

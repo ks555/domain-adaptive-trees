@@ -45,7 +45,7 @@ class DecisionTreeClassifier(object):
         # Recursively generate trees! 
         # find one split given an information gain 
         col, cutoff, gain = self.find_best_split_of_all(X, y)   
-        if col is None: # no split improves
+        if col is None:  # no split improves
             return {'type':'leaf', 'val':stats.mode(y).mode[0], 'tot':leny, 'dist': y.value_counts(sort=False)/leny}, 0
         if col in self.cat:
             cond = X[col] == cutoff
@@ -85,19 +85,18 @@ class DecisionTreeClassifier(object):
                 best_cutoff = cur_cutoff
                 best_col = c
         return best_col, best_cutoff, best_gain
-    
-    
+
     def find_best_split_attribute(self, x, y, is_cat):
         best_gain = 0
         best_cutoff = None
         if is_cat:
             values = x.unique()
         else:
-            values = np.sort(x.unique())
+            values = np.sort(x.unique())  # if it is not a categorical feature, will sort values
         entropy_total = self.info(y)
         n_tot = len(x)
         for value in values:
-            cond = x == value if is_cat else x < value 
+            cond = x == value if is_cat else x < value  # if categorical, split is between value and not value
             n_left = sum(cond) 
             if n_left < self.min_cases:
                 continue
@@ -145,22 +144,20 @@ class DecisionTreeClassifier(object):
             cur_layer = cur_layer['left'] if left else cur_layer['right']
         else:
             return [cur_layer.get('val'), cur_layer.get('dist')]
-        
 
     def entropy_func(self, c, n):
         """
         The math formula
         """
         return -(c*1.0/n)*math.log(c*1.0/n, 2)
-    
-    
+
     def entropy_cal(self, c1, c2):
         """
         Returns entropy of a group of data
         c1: count of one class
         c2: count of another class
         """
-        if c1== 0 or c2 == 0:  # when there is only one class in the group, entropy is 0
+        if c1 == 0 or c2 == 0:  # when there is only one class in the group, entropy is 0
             return 0
         return self.entropy_func(c1, c1+c2) + self.entropy_func(c2, c1+c2)
     
@@ -185,13 +182,13 @@ class DecisionTreeClassifier(object):
     def get_entropy(self, y_predict, y_real):
         """
         Returns entropy of a split
-        y_predict is the split decision, True/Fasle, and y_true can be multi class
+        y_predict is the split decision, True/False, and y_true can be multi class
         """
         if len(y_predict) != len(y_real):
             print('They have to be the same length')
             return None
         n = len(y_real)
-        s_true, n_true = self.entropy_of_one_division(y_real[y_predict]) # left hand side entropy
-        s_false, n_false = self.entropy_of_one_division(y_real[~y_predict]) # right hand side entropy
-        s = n_true*1.0/n * s_true + n_false*1.0/n * s_false # overall entropy, again weighted average
+        s_true, n_true = self.entropy_of_one_division(y_real[y_predict])  # left hand side entropy
+        s_false, n_false = self.entropy_of_one_division(y_real[~y_predict])  # right hand side entropy
+        s = n_true*1.0/n * s_true + n_false*1.0/n * s_false  # overall entropy, again weighted average
         return s
