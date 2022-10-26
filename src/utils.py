@@ -52,7 +52,8 @@ acs_data = load_data(['AL', 'CA'], '2017', '1-Year', 'person')
 pop_data = acs_data[['SEX', 'RAC1P', 'PINCP', 'AGEP']]
 
 
-# Below this is Kristen's old code, Kristen's new code above, below might die
+# todo Below this is Kristen's old code, Kristen's new code above, below is very specific to the ISTAT data but
+# I will adjust so that there is a preprocessing step so that IStat data can use the functions about as well
 '''
 # todo: this should be under the get_p_target class (lower levels in the project)
 df_locations = pickle.load(open('../../../Data/istat/CL_ITTER107.pkl', 'rb'))
