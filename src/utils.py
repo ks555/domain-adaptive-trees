@@ -5,9 +5,10 @@ import os
 
 # todo: Kristen
 # 4. Combining...gender, income etc...
-# 5. Do race, citizenship (encoding issue?)
 # path will be col, split value, cat yes or no - over multiple splits
 # Use path to query, seqeuntially, to narrow down the data, then send to groupby
+# 5. Check that this works with race, citizenship etc. (any encoding issue?)
+
 
 
 def load_data(states=["CA"], survey_year='2018', horizon='1-Year', survey='person'):
@@ -52,6 +53,7 @@ pop_data = acs_data[['SEX', 'RAC1P', 'PINCP', 'AGEP']]
 
 
 # Below this is Kristen's old code, Kristen's new code above, below might die
+'''
 # todo: this should be under the get_p_target class (lower levels in the project)
 df_locations = pickle.load(open('../../../Data/istat/CL_ITTER107.pkl', 'rb'))
 df_income = pickle.load(open('../../../Data/istat/dataflow_income.pkl', 'rb'))
@@ -71,14 +73,14 @@ def get_population(locations, gender_thresh=None, age_thresh=None, income_thresh
     if income_thresh:
     ## for each location in list, acquire proportion of pop in the income bracket of interest
     ## return the proportions as a list
-    
+
     ## income_lower false (default) means that you only want to calculate the proportion 
     ## of the pop that are in one income range (the one indicated by income_thresh).
     ## income_lower true means that you want to calculate the proportion of the pop with 
     ## income lower than income_thresh (so all of the income ranges below your threshold)
         return get_income(locations, income_thresh, income_lower)  
 
-    
+
 ## Get location index based on location name
 ## Check if there are duplicate names, what to do?
 def get_location_code(location_name):
@@ -109,7 +111,7 @@ def get_proportion_income(income_slice, income_thresh, income_lower, year_index 
             acs_data = acs_data.append(state_data, ignore_index=True)
 
     return acs_data
-
+'''
 
 
 
