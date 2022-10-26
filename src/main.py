@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn import tree
 from pprint import pprint
-from src.decision_tree_classifier import DecisionTreeClassifier
+from src.decision_tree_classifier import org_decision_tree_classifier
 from encoding import encode_attributes
 import category_encoders as ce
 import pandas as pd
