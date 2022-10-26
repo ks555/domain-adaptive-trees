@@ -4,6 +4,7 @@ __pycache__
 /unipi_dt/dt/__init__.py.txt
 .idea
 data/
+src/timing.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
