@@ -5,8 +5,6 @@ import os
 
 # todo: Kristen
 # 4. Combining...gender, income etc...
-# path will be col, split value, cat yes or no - over multiple splits
-# Use path to query, seqeuntially, to narrow down the data, then send to groupby
 # 5. Check that this works with race, citizenship etc. (any encoding issue?)
 
 
@@ -44,6 +42,10 @@ def get_proportion_groupby(pop_data, group_column, threshold=None):
         group_column = 'above_threshold'
     proportions = pop_data.groupby([group_column]).size()
     return proportions.values/len(pop_data)
+
+# path will be col, split value, cat yes or no - over multiple splits
+# Use path to query, seqeuntially, to narrow down the data, then send to groupby
+def follow_path():
 
 
 acs_data = load_data(['AL', 'CA'], '2017', '1-Year', 'person')

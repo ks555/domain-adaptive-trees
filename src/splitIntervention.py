@@ -5,9 +5,9 @@ Created on October 7, 2022
 @author: scott
 
 
-I am Designing these functions first for the folktables prediction task(s), so we can test
+I am Designing functions in utils for the folktables prediction task(s) first, so we can test
 and make decisions. We would like these to be more generalizable to other prediction tasks and
-data in the future though. This may be done by requiring (building?) pre-processing steps of input data
+data in the future though. This may be done by requiring pre-processing steps of input data
 (like ISTAT), in fact, perhaps the folktables formate can serve as the template for the required
 pre-processing...
  
