@@ -3,14 +3,14 @@ import folktables as ft
 import pandas as pd
 import os
 
-# todo: Kristen
+# todo: Kristen's list
 # 4. Combining...gender, income etc...
 # 5. Check that this works with race, citizenship etc. (any encoding issue?)
-
+# 6. Get or make a csv of col datatypes - maybe just Categorical or Not?
 
 
 def load_data(states=["CA"], survey_year='2018', horizon='1-Year', survey='person'):
-    # add check for data so it doesn't need to download
+    # add check for data, so it doesn't need to download
     state_codes = pd.read_csv('../data/adult/state_codes.csv')
     acs_data = pd.DataFrame()
     # To avoid downloading each time, check per state if downloaded, if not download
@@ -25,6 +25,15 @@ def load_data(states=["CA"], survey_year='2018', horizon='1-Year', survey='perso
             state_data = pd.DataFrame(f"../data/{survey_year}/{horizon}/psam_p{code}.csv")
             state_data.REGION = i = i+1
             acs_data = acs_data.append(state_data, ignore_index=True)
+        else:
+            # download that state
+            data_source = ft.ACSDataSource(survey_year=survey_year,
+                                           horizon=horizon, survey=survey, root_dir='../data/adult')
+            state_data = data_source.get_data(states=[states[i]], download=True)
+            state_data.REGION = i = i+1
+            # append to acs_data
+            acs_data = acs_data.append(state_data, ignore_index=True)
+    return acs_data
 
 
 # takes your loaded data and splits into features, labels, group membership vectors
@@ -43,18 +52,37 @@ def get_proportion_groupby(pop_data, group_column, threshold=None):
     proportions = pop_data.groupby([group_column]).size()
     return proportions.values/len(pop_data)
 
-# path will be col, split value, cat yes or no - over multiple splits
-# Use path to query, seqeuntially, to narrow down the data, then send to groupby
-def follow_path():
+
+# path is the split path leading to the node that we are testing different split options on
+# the instances in that node will be saved as csv, then the get_proportion_groupby can be called by tree
+# separately for each split candidate that is a 'treated' feature
+# path will be col, split value, left or right, categorical true or false - over multiple splits
+# leads to the single node of interest, returns and / or saves the instances that exist at that node
+# ex. of path: split_path = [['CIT', 4, 0, True], ['PWGTP', 24, 1, False], ['RAC1P, 3', 1, True]]
+def follow_path(split_path, data):
+    for i in range(0, len(split_path)):
+        # if feature is categorical:
+        if split_path[i][3]:
+            # condition is if feature value equals split value
+            cond = data[split_path[i][0]] == split_path[i][1]
+        else:
+            # condition is if feature value is less than split value
+            cond = data[split_path[i][0]] < split_path[i][1]
+        # if path goes to left node:
+        if split_path[i][1]:
+            data = data[cond]
+        # else if right node:
+        else:
+            data = data[~cond]
+    # todo save data as csv for access at next split on treated variable
+    return data
 
 
-acs_data = load_data(['AL', 'CA'], '2017', '1-Year', 'person')
-# load task - just makes numpy arrays of features, labels, protected group category for given task
-# features, labels, group = utils.load_task(acs_data, ft.ACSPublicCoverage)
-pop_data = acs_data[['SEX', 'RAC1P', 'PINCP', 'AGEP']]
+pop_data = load_data(['AL', 'CA'], '2017', '1-Year', 'person')
+split_path = [['CIT', 4, 0, True], ['PWGTP', 24, 1, False], ['RAC1P', 3, 1, True]]
+node_data = follow_path(split_path, pop_data)
 
-
-# todo Below this is Kristen's old code, Kristen's new code above, below is very specific to the ISTAT data but
+# Below this is Kristen's old code, Kristen's new code above, below is very specific to the ISTAT data but
 # I will adjust so that there is a preprocessing step so that IStat data can use the functions about as well
 '''
 # todo: this should be under the get_p_target class (lower levels in the project)
@@ -104,16 +132,6 @@ def get_proportion_income(income_slice, income_thresh, income_lower, year_index 
             ## Return proportion in column 7 (income less than 0) of total
             return income_slice.iloc[year_index,7]/total
 
-        else:
-            # download that state
-            data_source = ft.ACSDataSource(survey_year=survey_year,
-                                           horizon=horizon, survey=survey, root_dir='../data/adult')
-            state_data = data_source.get_data(states=[states[i]], download=True)
-            state_data.REGION = i = i+1
-            # append to acs_data
-            acs_data = acs_data.append(state_data, ignore_index=True)
-
-    return acs_data
 '''
 
 
