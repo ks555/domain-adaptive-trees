@@ -1,11 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Jun 25 11:24:42 2021
-implementtion of decision tree adapted from
-https://medium.com/@penggongting/implementing-decision-tree-from-scratch-in-python-c732e7c69aea
-@author: scott
-"""
-
 import numpy as np
 import math
 from scipy import stats
@@ -221,26 +213,6 @@ class DecisionTreeClassifier(object):
         else:
             return [cur_layer.get('val'), cur_layer.get('dist')]
 
-
-if __name__ == "__main__":
-    from sklearn.datasets import load_iris, load_boston
-    iris = load_iris()
-    # boston = load_boston()
-
-    from tools import *
-    from pprint import pprint
-
-    # X = iris.data
-    X = pd.DataFrame(iris.data, columns=iris.feature_names)
-    X['y'] = iris.target
-    y = X['y']
-    X = X[iris.feature_names]
-
-    X_train, X_test, y_train, y_test = split_data(X, y)
-
-    clf = DecisionTreeClassifier(max_depth=7, cat=['test', 'me'])
-    clf.fit(X_train, y_train)
-    pprint(clf.tree)
-    # create adjusted splitting criterion
-    predictions = clf.predict(X_test)
-    accuracy = print_scores(y_test, predictions['prediction'])
+#
+# EOF
+#
