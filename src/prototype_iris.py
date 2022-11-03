@@ -20,6 +20,7 @@ target_df['y'] = y_test.copy()
 target_df.reset_index(inplace=True, drop=True)
 
 clf = DecisionTreeClassifier(max_depth=7, )
+# clf.fit(X_train, y_train, cat_atts=['test', 'me'])
 clf.fit(X_train, y_train, cat_atts=['test', 'me'], alpha=0.7, X_target_domain=X_test, y_target_domain=y_test)
 pprint(clf.tree)
 

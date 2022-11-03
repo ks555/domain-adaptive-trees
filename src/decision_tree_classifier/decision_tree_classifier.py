@@ -131,15 +131,21 @@ class DecisionTreeClassifier(object):
 
     def find_best_split_of_all(self, X: DataFrame, y: Series):
 
-        # you_are_here = (layer: int, att: str, side: str) todo: soem function here to recover current path?
+        # you_are_here = (layer: int, att: str, side: str)
         if self.running_da_tree:
-            # unconditional path
-            u_current_path = self.you_are_here
-            # conditional path
-            c_current_path = ''  # todo: unpack current_path here?
-            current_path = [u_current_path]  # in the unconditional case, we would take the last instance of the list!
+            if self.you_are_here[0] == 0:
+                # root node
+                y_td = self.y_td.copy()
+                X_td = self.X_td.copy()
+            else:
+                # all other nodes
+                # current_path = self.get_current_path() todo atm, assumes unconditional path
+                y_td = self.y_td.copy()  # todo
+                X_td = self.X_td.copy()
         else:
-            current_path = None
+            y_td = None
+            X_td = None
+        ###
 
         best_gain = 0
         best_col = None
@@ -150,7 +156,7 @@ class DecisionTreeClassifier(object):
             ## to calculate gain, if c is a 'treated' attribute, map back to values to include stats data adjustment
             is_cat = c in self.cat
             if self.running_da_tree:
-                gain, cur_cutoff = self.da_find_best_split_attribute(X[c], y, is_cat, current_path)
+                gain, cur_cutoff = self.da_find_best_split_attribute(X[c], y, is_cat, X_td[c], y_td, self.alpha)
             else:
                 gain, cur_cutoff = self.find_best_split_attribute(X[c], y, is_cat)
             if gain > best_gain:
@@ -189,14 +195,7 @@ class DecisionTreeClassifier(object):
                 best_cutoff = value
         return best_gain, best_cutoff
 
-    def da_find_best_split_attribute(self, x: Series, y: Series, is_cat: bool, current_path: List[Tuple]):
-
-        # update y_td based on current path
-        if current_path[0][0] == 0:  # root node
-            y_td = self.y_td.copy()
-        else:
-            y_td = self.y_td.copy()  # TODO
-
+    def da_find_best_split_attribute(self, x: Series, y: Series, is_cat: bool, x_td: Series, y_td: Series, alpha: float):
         best_gain = 0
         best_cutoff = None
         if is_cat:
@@ -204,10 +203,11 @@ class DecisionTreeClassifier(object):
         else:
             values = np.sort(x.unique())
         # get entropy H(T)
-        entropy_total = self.da_info(y_values=self.y_values, y_source=y, y_target=y_td, alpha=self.alpha)
+        entropy_total = self.da_info(self.y_values, y, y_td, alpha)
         n_tot = len(x)
         for value in values:
             cond = x == value if is_cat else x < value
+            cond_for_td = x_td == value if is_cat else x_td < value  # index must align for x_td and y_td
             n_left = sum(cond)
             if n_left < self.min_cases:  # todo: might introduce bias by for first min values
                 continue
@@ -216,8 +216,8 @@ class DecisionTreeClassifier(object):
                 continue
             # TODO: check condition! we need to make our own condition for y_td based on y (?)
             # get entropy H(T|A=a)
-            entropy_left = self.da_info(self.y_values, y[cond], y_td[cond], self.alpha)     # < value
-            entropy_right = self.da_info(self.y_values, y[~cond], y_td[~cond], self.alpha)  # >= value
+            entropy_left = self.da_info(self.y_values, y[cond], y_td[cond_for_td], self.alpha)     # < value
+            entropy_right = self.da_info(self.y_values, y[~cond], y_td[~cond_for_td], self.alpha)  # >= value
             left_prop = n_left / n_tot
             right_prop = 1 - left_prop
             # Information Gain: H(T) - H(T|A=a)
@@ -228,7 +228,7 @@ class DecisionTreeClassifier(object):
         return best_gain, best_cutoff
 
     @staticmethod
-    def info(y: Series):  # for H(T) part of IG
+    def info(y: Series):
         vc = y.value_counts()
         tot = len(y)
         ent = 0
@@ -238,7 +238,7 @@ class DecisionTreeClassifier(object):
         return ent
 
     @staticmethod
-    def da_info(y_values: List[int], y_source: Series, y_target: Series, alpha: float):
+    def da_info(y_values: List[int], y_source: Series, y_target: Series, alpha: float):  # todo: when we only have X_td!
         # source domain
         vc_s = y_source.value_counts()
         tot_s = len(y_source)
@@ -257,7 +257,8 @@ class DecisionTreeClassifier(object):
             else:
                 prop_t = 0.0
             da_prop = (alpha * prop_s + (1 - alpha) * prop_t)
-            ent -= da_prop * math.log2(da_prop)
+            if da_prop > 0.0:
+                ent -= da_prop * math.log2(da_prop)
         return ent
 
     def predict(self, X):
