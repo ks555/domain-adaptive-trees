@@ -1,16 +1,14 @@
 import numpy as np
 import math
-
 import yapftests.yapf_test
 from scipy import stats
 import pandas as pd
-from typing import List
+from typing import Dict, List, Tuple
 from pandas import DataFrame, Series
-from typing import Dict
 
 
 class DecisionTreeClassifier(object):
-    def __init__(self, max_depth: int, ):
+    def __init__(self, max_depth: int, *args, **kwargs):
         self.max_depth = max_depth
         self.depth = 0
         self.min_cases = 5
@@ -35,9 +33,9 @@ class DecisionTreeClassifier(object):
         self.cat = set(cat)
         self.y_values = y.value_counts().index.to_list()
         # domain adaptation params
-        if X_target_domain is not None:
-            self.running_da_tree = True  # baseline case: we'll always need X_td
-        self.alpha = alpha if alpha is not None else alpha  # if alpha=1.0, da_prop is s_prop
+        if X_target_domain is not None and y_target_domain is not None:
+            self.running_da_tree = True
+        self.alpha = alpha if alpha is not None else alpha  # if alpha=1.0, da_prop is just prop_s
         self.X_td = X_target_domain if X_target_domain is not None else X_target_domain
         self.y_td = y_target_domain if y_target_domain is not None else y_target_domain
         # build tree
@@ -98,6 +96,7 @@ class DecisionTreeClassifier(object):
 
         return par_node, max(dleft, dright) + 1
 
+    # todo
     def _store_subtree(self, par_node: Dict):
         if par_node is None:
             print('no data in this group')
@@ -132,25 +131,13 @@ class DecisionTreeClassifier(object):
 
     def find_best_split_of_all(self, X: DataFrame, y: Series):
 
-        # delete below?
-        # if self.curr_tree is None:
-        #     current_path = ''  # all Xs are candidates
-        #     print('root node')
-        # else:
-        #     print('in layer {layer}'.format(layer=self.you_are_here[0]))
-        #     print('go back {n} step(s)'.format(n=self.you_are_here[0] - 1))
-        #     current_path = self.curr_tree['split_col'] + ' ' + self.curr_tree[self.you_are_here[1]]
-        # print(current_path)  # todo: verify | maybe we don't need the full path if we keep track in parallel?
-        # # todo: maybe grow paths here as a dict?
-        ###
-
-        # you_are_here = (layer: int, att: str, side: str)
+        # you_are_here = (layer: int, att: str, side: str) todo: soem function here to recover current path?
         if self.running_da_tree:
             # unconditional path
             u_current_path = self.you_are_here
             # conditional path
             c_current_path = ''  # todo: unpack current_path here?
-            current_path = u_current_path
+            current_path = [u_current_path]  # in the unconditional case, we would take the last instance of the list!
         else:
             current_path = None
 
@@ -162,14 +149,17 @@ class DecisionTreeClassifier(object):
             ## send mappings of value / encoded value to DT
             ## to calculate gain, if c is a 'treated' attribute, map back to values to include stats data adjustment
             is_cat = c in self.cat
-            gain, cur_cutoff = self.find_best_split_attribute(X[c], y, is_cat, current_path)
+            if self.running_da_tree:
+                gain, cur_cutoff = self.da_find_best_split_attribute(X[c], y, is_cat, current_path)
+            else:
+                gain, cur_cutoff = self.find_best_split_attribute(X[c], y, is_cat)
             if gain > best_gain:
                 best_gain = gain
                 best_cutoff = cur_cutoff
                 best_col = c
         return best_col, best_cutoff, best_gain
 
-    def find_best_split_attribute(self, x: Series, y: Series, is_cat: bool, current_path: None):
+    def find_best_split_attribute(self, x: Series, y: Series, is_cat: bool):
         best_gain = 0
         best_cutoff = None
         if is_cat:
@@ -177,10 +167,7 @@ class DecisionTreeClassifier(object):
         else:
             values = np.sort(x.unique())
         # get entropy H(T)
-        if current_path is not None:
-            entropy_total = self.da_info(y_values=self.y_values, y_source=y, y_target=y_td, alpha=self.alpha)
-        else:
-            entropy_total = self.info(y)
+        entropy_total = self.info(y)
         n_tot = len(x)
         for value in values:
             cond = x == value if is_cat else x < value
@@ -190,9 +177,47 @@ class DecisionTreeClassifier(object):
             n_right = n_tot - n_left
             if n_right < self.min_cases:
                 continue
-            # get entropy H(T|A=a) given current path
+            # get entropy H(T|A=a)
             entropy_left = self.info(y[cond])    # < value
             entropy_right = self.info(y[~cond])  # >= value
+            left_prop = n_left / n_tot
+            right_prop = 1 - left_prop
+            # Information Gain: H(T) - H(T|A=a)
+            gain = entropy_total - left_prop * entropy_left - right_prop * entropy_right
+            if gain > best_gain:
+                best_gain = gain
+                best_cutoff = value
+        return best_gain, best_cutoff
+
+    def da_find_best_split_attribute(self, x: Series, y: Series, is_cat: bool, current_path: List[Tuple]):
+
+        # update y_td based on current path
+        if current_path[0][0] == 0:  # root node
+            y_td = self.y_td.copy()
+        else:
+            y_td = self.y_td.copy()  # TODO
+
+        best_gain = 0
+        best_cutoff = None
+        if is_cat:
+            values = x.unique()
+        else:
+            values = np.sort(x.unique())
+        # get entropy H(T)
+        entropy_total = self.da_info(y_values=self.y_values, y_source=y, y_target=y_td, alpha=self.alpha)
+        n_tot = len(x)
+        for value in values:
+            cond = x == value if is_cat else x < value
+            n_left = sum(cond)
+            if n_left < self.min_cases:  # todo: might introduce bias by for first min values
+                continue
+            n_right = n_tot - n_left
+            if n_right < self.min_cases:
+                continue
+            # TODO: check condition! we need to make our own condition for y_td based on y (?)
+            # get entropy H(T|A=a)
+            entropy_left = self.da_info(self.y_values, y[cond], y_td[cond], self.alpha)     # < value
+            entropy_right = self.da_info(self.y_values, y[~cond], y_td[~cond], self.alpha)  # >= value
             left_prop = n_left / n_tot
             right_prop = 1 - left_prop
             # Information Gain: H(T) - H(T|A=a)
