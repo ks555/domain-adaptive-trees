@@ -53,8 +53,7 @@ Our current proposal:
 
 
 """
-import utils
-import folktables as ft
+
 
 # Pass location(s) for which you want proportion information, as list to function of relevant demographic
 # [I don't remember why we want multiple locations, but Salvatore and I needed it at the time]
@@ -83,10 +82,26 @@ SEX (Sex): Range of values:
 AGEP (Age): Range of values:
 – 0 - 99 (integers) – 0 indicates less than 1 year old.
 '''
+import utils
+import folktables as ft
+import pandas as pd
+import decision_tree_classifier as dtc
+from pprint import pprint
 
-acs_data = utils.load_data(['AL', 'CA'], '2017', '1-Year', 'person')
+
+acs_data = utils.load_folktables_data(['AL', 'CA'], '2017', '1-Year', 'person')
 # load task - just makes numpy arrays of features, labels, protected group category for given task
-# features, labels, group = utils.load_task(acs_data, ft.ACSPublicCoverage)
-pop_data = acs_data[['SEX', 'RAC1P', 'PINCP', 'AGEP']]
+# acs_data = utils.load_data(['AL', 'CA'], '2017', '1-Year', 'person')
+features, labels, group = utils.load_task(acs_data, ft.ACSPublicCoverage)
 
+X = pd.DataFrame(features, columns=ft.ACSPublicCoverage.features)
+y = labels
 
+X_train, X_test, y_train, y_test = utils.split_data(X, y)
+
+clf = dtc.DecisionTreeClassifier(max_depth=7, cat=['test', 'me'])
+clf.fit(X_train, y_train)
+pprint(clf.tree)
+# create adjusted splitting criterion
+predictions = clf.predict(X_test)
+accuracy = print_scores(y_test, predictions['prediction'])
