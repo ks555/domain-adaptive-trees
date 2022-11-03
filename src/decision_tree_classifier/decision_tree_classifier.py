@@ -78,22 +78,24 @@ class DecisionTreeClassifier(object):
         par_node = {'type': 'split',
                     'gain': gain, 'split_col': col, 'cutoff': cutoff, 'tot': leny, 'dist': y.value_counts(sort=False) / leny}  # save the information: distribution of y
 
-        # track (sub)trees
+        # track (sub)trees todo: delete?
         if depth > 0:
             self.prev_tree = self.curr_tree.copy()
-            self.all_tress.append(self.prev_tree)  # todo: append as a tuple where you connect to previous tree
+            self.all_tress.append(self.prev_tree)
         self.curr_tree = self._store_subtree(par_node)
 
         # generate tree for the left hand side data
         self.you_are_here = (depth + 1, col, cutoff, 'lhs')
         par_node['left'], dleft = self.build(X_left, y_left, depth + 1)
-        # temp_l_tree, dleft = self.build(X_left, y_left, depth + 1) # todo check bcs order affects the recursive search
+
+        # temp_l_tree, dleft = self.build(X_left, y_left, depth + 1)
         # par_node['left'] = temp_l_tree
         # self.curr_tree['left'] = self._store_subtree(temp_l_tree)
 
         # generate tree for the right hand side data
         self.you_are_here = (depth + 1, col, cutoff, 'rhs')
         par_node['right'], dright = self.build(X_right, y_right, depth + 1)
+
         # temp_r_tree, dright = self.build(X_right, y_right, depth + 1)
         # par_node['right'] = temp_r_tree
         # self.curr_tree['right'] = self._store_subtree(temp_r_tree)
@@ -136,7 +138,8 @@ class DecisionTreeClassifier(object):
 
     def find_best_split_of_all(self, X: DataFrame, y: Series):
 
-        ### you_are_here = (layer: int, att: str, side: str)
+        ### todo atm, assumes unconditional path
+        # you_are_here = (layer: int, att: str, side: str)
         if self.running_da_tree:
             if self.you_are_here[0] == 0:
                 # root node
@@ -144,7 +147,7 @@ class DecisionTreeClassifier(object):
                 X_td = self.X_td.copy()
             else:
                 # all other nodes
-                # current_path = self.get_current_path() todo atm, assumes unconditional path
+                # current_path = self.get_current_path() todo
                 if self.you_are_here[1] in self.cat:
                     cond = self.X_td[self.you_are_here[1]] == self.you_are_here[2]
                 else:
@@ -164,9 +167,6 @@ class DecisionTreeClassifier(object):
         best_col = None
         best_cutoff = None
         for c in X.columns:
-            ## proposal - target encode discrete prior to building DT
-            ## send mappings of value / encoded value to DT
-            ## to calculate gain, if c is a 'treated' attribute, map back to values to include stats data adjustment
             is_cat = c in self.cat
             if self.running_da_tree:
                 gain, cur_cutoff = self.da_find_best_split_attribute(X[c], y, is_cat, X_td[c], y_td, self.alpha)
@@ -227,7 +227,6 @@ class DecisionTreeClassifier(object):
             n_right = n_tot - n_left
             if n_right < self.min_cases:
                 continue
-            # TODO: check condition! we need to make our own condition for y_td based on y (?)
             # get entropy H(T|A=a)
             entropy_left = self.da_info(self.y_values, y[cond], y_td[cond_for_td], self.alpha)     # < value
             entropy_right = self.da_info(self.y_values, y[~cond], y_td[~cond_for_td], self.alpha)  # >= value
@@ -251,7 +250,7 @@ class DecisionTreeClassifier(object):
         return ent
 
     @staticmethod
-    def da_info(y_values: List[int], y_source: Series, y_target: Series, alpha: float):  # todo: when we only have X_td!
+    def da_info(y_values: List[int], y_source: Series, y_target: Series, alpha: float):
         # source domain
         vc_s = y_source.value_counts()
         tot_s = len(y_source)
