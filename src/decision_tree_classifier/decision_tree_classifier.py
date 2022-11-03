@@ -55,14 +55,17 @@ class DecisionTreeClassifier(object):
             return None, 0
         # base case 3: all y is the same in this group
         if self.all_same(y):
-            return {'type': 'leaf', 'val': y.iloc[0], 'tot': leny, 'dist': y.value_counts(sort=False) / leny}, 0
+            return {'type': 'leaf',
+                    'val': y.iloc[0], 'tot': leny, 'dist': y.value_counts(sort=False) / leny}, 0
         # base case 4: max depth reached
         if depth >= self.max_depth:
-            return {'type': 'leaf', 'val': stats.mode(y).mode[0], 'tot': leny, 'dist': y.value_counts(sort=False) / leny}, 0
+            return {'type': 'leaf',
+                    'val': stats.mode(y).mode[0], 'tot': leny, 'dist': y.value_counts(sort=False) / leny}, 0
         # recursive case:
         col, cutoff, gain = self.find_best_split_of_all(X, y)  # find one split given an information gain
         if col is None:  # no split improves
-            return {'type': 'leaf', 'val': stats.mode(y).mode[0], 'tot': leny, 'dist': y.value_counts(sort=False) / leny}, 0
+            return {'type': 'leaf',
+                    'val': stats.mode(y).mode[0], 'tot': leny, 'dist': y.value_counts(sort=False) / leny}, 0
         if col in self.cat:  # split for cont. vars; all-but for cat. vars
             cond = X[col] == cutoff
         else:
@@ -72,7 +75,8 @@ class DecisionTreeClassifier(object):
         y_left = y[cond]    # left hand side data
         y_right = y[~cond]  # right hand side data
         print('split', col, gain, cutoff)
-        par_node = {'type': 'split', 'gain': gain, 'split_col': col, 'cutoff': cutoff, 'tot': leny, 'dist': y.value_counts(sort=False) / leny}  # save the information: distribution of y
+        par_node = {'type': 'split',
+                    'gain': gain, 'split_col': col, 'cutoff': cutoff, 'tot': leny, 'dist': y.value_counts(sort=False) / leny}  # save the information: distribution of y
 
         # track (sub)trees
         if depth > 0:
@@ -81,13 +85,14 @@ class DecisionTreeClassifier(object):
         self.curr_tree = self._store_subtree(par_node)
 
         # generate tree for the left hand side data
-        self.you_are_here = (depth + 1, 'lhs')
+        self.you_are_here = (depth + 1, col, cutoff, 'lhs')
         par_node['left'], dleft = self.build(X_left, y_left, depth + 1)
         # temp_l_tree, dleft = self.build(X_left, y_left, depth + 1) # todo check bcs order affects the recursive search
         # par_node['left'] = temp_l_tree
         # self.curr_tree['left'] = self._store_subtree(temp_l_tree)
+
         # generate tree for the right hand side data
-        self.you_are_here = (depth + 1, 'rhs')
+        self.you_are_here = (depth + 1, col, cutoff, 'rhs')
         par_node['right'], dright = self.build(X_right, y_right, depth + 1)
         # temp_r_tree, dright = self.build(X_right, y_right, depth + 1)
         # par_node['right'] = temp_r_tree
@@ -131,7 +136,7 @@ class DecisionTreeClassifier(object):
 
     def find_best_split_of_all(self, X: DataFrame, y: Series):
 
-        # you_are_here = (layer: int, att: str, side: str)
+        ### you_are_here = (layer: int, att: str, side: str)
         if self.running_da_tree:
             if self.you_are_here[0] == 0:
                 # root node
@@ -140,8 +145,16 @@ class DecisionTreeClassifier(object):
             else:
                 # all other nodes
                 # current_path = self.get_current_path() todo atm, assumes unconditional path
-                y_td = self.y_td.copy()  # todo
-                X_td = self.X_td.copy()
+                if self.you_are_here[1] in self.cat:
+                    cond = self.X_td[self.you_are_here[1]] == self.you_are_here[2]
+                else:
+                    cond = self.X_td[self.you_are_here[1]] < self.you_are_here[2]
+                if self.you_are_here[3] == 'lhs':
+                    y_td = self.y_td[cond].copy()
+                    X_td = self.X_td[cond].copy()
+                else:  # self.you_are_here[3] == 'rhs'
+                    y_td = self.y_td[~cond].copy()
+                    X_td = self.X_td[~cond].copy()
         else:
             y_td = None
             X_td = None
