@@ -1,5 +1,7 @@
 import numpy as np
 import math
+
+import yapftests.yapf_test
 from scipy import stats
 import pandas as pd
 from typing import List
@@ -8,30 +10,42 @@ from typing import Dict
 
 
 class DecisionTreeClassifier(object):
-    def __init__(self, max_depth: int, cat: List[str] = None):
+    def __init__(self, max_depth: int, ):
         self.max_depth = max_depth
-        cat = [] if cat is None else cat
-        self.cat = set(cat)
         self.depth = 0
         self.min_cases = 5
+        self.cat = None
         self.tree = None
-        self.you_are_here = (0, '')  # the root node: layer 0, side ''
+
+        self.you_are_here = (0, '', None, '')  # start with root node: (layer 0, att '', cutoff None, side '')
         self.curr_tree = None
         self.prev_tree = None
         self.all_tress = []
-        self.alpha = 1.0  # if alpha=1.0, da_prop is s_prop: non-da tree
-        self.add_info = None
 
-    def fit(self, X: DataFrame, y: Series, alpha: float = None, add_info: DataFrame = None, ):
+        self.y_values = None  # values are based on the source domain
+        self.running_da_tree = False
+        self.alpha = 1.0  # todo: make it None?
+        self.X_td = None
+        self.y_td = None
+
+    def fit(self, X: DataFrame, y: Series, cat_atts: List[str] = None,
+            alpha: float = None, X_target_domain: DataFrame = None, y_target_domain: Series = None, ):
+        # instance-specific params
+        cat = [] if cat_atts is None else cat_atts
+        self.cat = set(cat)
+        self.y_values = y.value_counts().index.to_list()
         # domain adaptation params
-        self.alpha = alpha if alpha is not None else alpha
-        self.add_info = add_info if add_info is not None else add_info
+        if X_target_domain is not None:
+            self.running_da_tree = True  # baseline case: we'll always need X_td
+        self.alpha = alpha if alpha is not None else alpha  # if alpha=1.0, da_prop is s_prop
+        self.X_td = X_target_domain if X_target_domain is not None else X_target_domain
+        self.y_td = y_target_domain if y_target_domain is not None else y_target_domain
         # build tree
         self.tree, self.depth = self.build(X, y, depth=0)
 
     def build(self, X: DataFrame, y: Series, depth: int):
         """
-        x: Feature set
+        X: Feature set
         y: target variable
         depth: the depth of the current layer
         """
@@ -60,8 +74,7 @@ class DecisionTreeClassifier(object):
         y_left = y[cond]    # left hand side data
         y_right = y[~cond]  # right hand side data
         print('split', col, gain, cutoff)
-        par_node = {'type': 'split', 'gain': gain, 'split_col': col, 'cutoff': cutoff, 'tot': leny,
-                    'dist': y.value_counts(sort=False) / leny}  # save the information: distribution of y
+        par_node = {'type': 'split', 'gain': gain, 'split_col': col, 'cutoff': cutoff, 'tot': leny, 'dist': y.value_counts(sort=False) / leny}  # save the information: distribution of y
 
         # track (sub)trees
         if depth > 0:
@@ -113,20 +126,34 @@ class DecisionTreeClassifier(object):
     #     while self.you_are_here[0] > 0:
     #         prev_layer = self.you_are_here[0] - 1
 
-    def all_same(self, items):
+    @staticmethod
+    def all_same(items):
         return all(x == items.iloc[0] for x in items)
 
-    def find_best_split_of_all(self, X, y):
+    def find_best_split_of_all(self, X: DataFrame, y: Series):
 
-        if self.curr_tree is None:
-            current_path = ''  # all Xs are candidates
-            print('root node')
+        # delete below?
+        # if self.curr_tree is None:
+        #     current_path = ''  # all Xs are candidates
+        #     print('root node')
+        # else:
+        #     print('in layer {layer}'.format(layer=self.you_are_here[0]))
+        #     print('go back {n} step(s)'.format(n=self.you_are_here[0] - 1))
+        #     current_path = self.curr_tree['split_col'] + ' ' + self.curr_tree[self.you_are_here[1]]
+        # print(current_path)  # todo: verify | maybe we don't need the full path if we keep track in parallel?
+        # # todo: maybe grow paths here as a dict?
+        ###
+
+        # you_are_here = (layer: int, att: str, side: str)
+        if self.running_da_tree:
+            # unconditional path
+            u_current_path = self.you_are_here
+            # conditional path
+            c_current_path = ''  # todo: unpack current_path here?
+            current_path = u_current_path
         else:
-            print('in layer {layer}'.format(layer=self.you_are_here[0]))
-            print('go back {n} step(s)'.format(n=self.you_are_here[0] - 1))
-            current_path = self.curr_tree['split_col'] + ' ' + self.curr_tree[self.you_are_here[1]]
-        print(current_path)  # todo: verify | maybe we don't need the full path if we keep track in parallel?
-        # todo: maybe grow paths here as a dict?
+            current_path = None
+
         best_gain = 0
         best_col = None
         best_cutoff = None
@@ -135,14 +162,14 @@ class DecisionTreeClassifier(object):
             ## send mappings of value / encoded value to DT
             ## to calculate gain, if c is a 'treated' attribute, map back to values to include stats data adjustment
             is_cat = c in self.cat
-            gain, cur_cutoff = self.find_best_split_attribute(X[c], y, is_cat)
+            gain, cur_cutoff = self.find_best_split_attribute(X[c], y, is_cat, current_path)
             if gain > best_gain:
                 best_gain = gain
                 best_cutoff = cur_cutoff
                 best_col = c
         return best_col, best_cutoff, best_gain
 
-    def find_best_split_attribute(self, x, y, is_cat):
+    def find_best_split_attribute(self, x: Series, y: Series, is_cat: bool, current_path: None):
         best_gain = 0
         best_cutoff = None
         if is_cat:
@@ -150,7 +177,10 @@ class DecisionTreeClassifier(object):
         else:
             values = np.sort(x.unique())
         # get entropy H(T)
-        entropy_total = self.info(y)
+        if current_path is not None:
+            entropy_total = self.da_info(y_values=self.y_values, y_source=y, y_target=y_td, alpha=self.alpha)
+        else:
+            entropy_total = self.info(y)
         n_tot = len(x)
         for value in values:
             cond = x == value if is_cat else x < value
@@ -160,7 +190,6 @@ class DecisionTreeClassifier(object):
             n_right = n_tot - n_left
             if n_right < self.min_cases:
                 continue
-            # todo: should here what's the current path in my tree: use self.need to know current path here self.subtree={}
             # get entropy H(T|A=a) given current path
             entropy_left = self.info(y[cond])    # < value
             entropy_right = self.info(y[~cond])  # >= value
@@ -173,8 +202,8 @@ class DecisionTreeClassifier(object):
                 best_cutoff = value
         return best_gain, best_cutoff
 
-    # @staticmethod
-    def info(self, y: Series):  # for H(T) part of IG todo: not true.. firts split is uncondtional
+    @staticmethod
+    def info(y: Series):  # for H(T) part of IG
         vc = y.value_counts()
         tot = len(y)
         ent = 0
@@ -183,13 +212,26 @@ class DecisionTreeClassifier(object):
             ent -= prop * math.log2(prop)
         return ent
 
-    def da_info(self, y: Series, alpha: float, t_prop: float):  # for H(T|A=a) part of IG todo: t_y
-        vc = y.value_counts()
-        tot = len(y)
+    @staticmethod
+    def da_info(y_values: List[int], y_source: Series, y_target: Series, alpha: float):
+        # source domain
+        vc_s = y_source.value_counts()
+        tot_s = len(y_source)
+        # target domain
+        vc_t = y_target.value_counts()
+        tot_t = len(y_target)
+        # domain-adaptive entropy
         ent = 0
-        for v in vc:
-            s_prop = v / tot  # what if we get t_prop like we get s_prop? via partition
-            da_prop = (alpha*s_prop + (1 - alpha)*t_prop)  # todo: do we have to loop over t_prop using v? yes!
+        for val in y_values:  # the values are the (potential) index in value_count
+            if val in vc_s.index:
+                prop_s = vc_s[val] / tot_s
+            else:
+                prop_s = 0.0
+            if val in vc_t.index:
+                prop_t = vc_t[val] / tot_t
+            else:
+                prop_t = 0.0
+            da_prop = (alpha * prop_s + (1 - alpha) * prop_t)
             ent -= da_prop * math.log2(da_prop)
         return ent
 
