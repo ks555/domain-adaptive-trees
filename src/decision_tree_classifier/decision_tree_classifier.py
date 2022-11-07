@@ -15,29 +15,30 @@ class DecisionTreeClassifier(object):
         self.cat = None
         self.tree = None
 
-        self.you_are_here = (0, '', None, '')  # start with root node: (layer 0, att '', cutoff None, side '')
-        self.curr_tree = None
-        self.prev_tree = None
-        self.all_tress = []
-
-        self.y_values = None  # values are based on the source domain
-        self.running_da_tree = False
-        self.alpha = 1.0  # todo: make it None?
+        self._you_are_here = ()
+        self._current_path = []
+        self.running_da_cov_shift = False  # covariate shift
+        self.running_da_con_shift = False  # concept shift
+        self.alpha = 0.5
         self.X_td = None
         self.y_td = None
 
+        self.y_values = None  # values are based on the source domain todo: might have to delete
+
     def fit(self, X: DataFrame, y: Series, cat_atts: List[str] = None,
-            alpha: float = None, X_target_domain: DataFrame = None, y_target_domain: Series = None, ):
+            alpha: float = None, X_td: object = None, y_td: object = None, ):
         # instance-specific params
         cat = [] if cat_atts is None else cat_atts
         self.cat = set(cat)
         self.y_values = y.value_counts().index.to_list()
         # domain adaptation params
-        if X_target_domain is not None and y_target_domain is not None:
-            self.running_da_tree = True
-        self.alpha = alpha if alpha is not None else alpha  # if alpha=1.0, da_prop is just prop_s
-        self.X_td = X_target_domain if X_target_domain is not None else X_target_domain
-        self.y_td = y_target_domain if y_target_domain is not None else y_target_domain
+        if X_td is not None:
+            self.running_da_cov_shift = True
+        if X_td is not None and y_td is not None:
+            self.running_da_con_shift = True
+        self.alpha = alpha if alpha is not None else alpha
+        self.X_td = X_td if X_td is not None else X_td
+        self.y_td = y_td if y_td is not None else y_td
         # build tree
         self.tree, self.depth = self.build(X, y, depth=0)
 
@@ -76,55 +77,49 @@ class DecisionTreeClassifier(object):
         y_right = y[~cond]  # right hand side data
         print('split', col, gain, cutoff)
         par_node = {'type': 'split',
-                    'gain': gain, 'split_col': col, 'cutoff': cutoff, 'tot': leny, 'dist': y.value_counts(sort=False) / leny}  # save the information: distribution of y
+                    'gain': gain, 'split_col': col, 'cutoff': cutoff, 'tot': leny, 'dist': y.value_counts(sort=False) / leny}
 
-        # track (sub)trees todo: delete?
-        if depth > 0:
-            self.prev_tree = self.curr_tree.copy()
-            self.all_tress.append(self.prev_tree)
-        self.curr_tree = self._store_subtree(par_node)
-
+        # the beauty of recursion (?)
+        prev_path = self._current_path.copy()
+        print(prev_path)
         # generate tree for the left hand side data
-        self.you_are_here = (depth + 1, col, cutoff, 'lhs')
+        self._you_are_here = (col, cutoff, 'left')
+        print(self._you_are_here)
+        self._current_path = prev_path + [self._you_are_here]
+        print(self._current_path)
         par_node['left'], dleft = self.build(X_left, y_left, depth + 1)
 
-        # temp_l_tree, dleft = self.build(X_left, y_left, depth + 1)
-        # par_node['left'] = temp_l_tree
-        # self.curr_tree['left'] = self._store_subtree(temp_l_tree)
-
         # generate tree for the right hand side data
-        self.you_are_here = (depth + 1, col, cutoff, 'rhs')
+        self._you_are_here = (col, cutoff, 'right')
+        print(self._you_are_here)
+        self._current_path = prev_path + [self._you_are_here]
+        print(self._current_path)
         par_node['right'], dright = self.build(X_right, y_right, depth + 1)
-
-        # temp_r_tree, dright = self.build(X_right, y_right, depth + 1)
-        # par_node['right'] = temp_r_tree
-        # self.curr_tree['right'] = self._store_subtree(temp_r_tree)
-        # del temp_l_tree, temp_r_tree
 
         return par_node, max(dleft, dright) + 1
 
-    # todo
-    def _store_subtree(self, par_node: Dict):
-        if par_node is None:
-            print('no data in this group')
-            return None
-        else:
-            # return `split` info
-            if par_node['type'] == 'split':
-                if par_node['split_col'] in self.cat:
-                    l_rule = '== {cutoff}'.format(cutoff=par_node['cutoff'])
-                    r_rule = '!= {cutoff}'.format(cutoff=par_node['cutoff'])
-                else:
-                    l_rule = '< {cutoff}'.format(cutoff=par_node['cutoff'])
-                    r_rule = '>= {cutoff}'.format(cutoff=par_node['cutoff'])
-                sub_tree = {'type': par_node['type'],
-                            'split_col': par_node['split_col'],
-                            'cutoff': par_node['cutoff'],
-                            'lhs': l_rule, 'rhs': r_rule}
-            # return `leaf` info
-            else:
-                sub_tree = {'type': par_node['type']}
-        return sub_tree
+    # # todo
+    # def _store_subtree(self, par_node: Dict):
+    #     if par_node is None:
+    #         print('no data in this group')
+    #         return None
+    #     else:
+    #         # return `split` info
+    #         if par_node['type'] == 'split':
+    #             if par_node['split_col'] in self.cat:
+    #                 l_rule = '== {cutoff}'.format(cutoff=par_node['cutoff'])
+    #                 r_rule = '!= {cutoff}'.format(cutoff=par_node['cutoff'])
+    #             else:
+    #                 l_rule = '< {cutoff}'.format(cutoff=par_node['cutoff'])
+    #                 r_rule = '>= {cutoff}'.format(cutoff=par_node['cutoff'])
+    #             sub_tree = {'type': par_node['type'],
+    #                         'split_col': par_node['split_col'],
+    #                         'cutoff': par_node['cutoff'],
+    #                         'lhs': l_rule, 'rhs': r_rule}
+    #         # return `leaf` info
+    #         else:
+    #             sub_tree = {'type': par_node['type']}
+    #     return sub_tree
 
     # todo
     # def _get_current_path(self):
@@ -138,26 +133,33 @@ class DecisionTreeClassifier(object):
 
     def find_best_split_of_all(self, X: DataFrame, y: Series):
 
-        ### todo atm, assumes unconditional path
-        # you_are_here = (layer: int, att: str, side: str)
-        if self.running_da_tree:
-            if self.you_are_here[0] == 0:
+        if len(self._you_are_here) > 0:
+            print("you're at the {side} of {col}".format(side=self._you_are_here[2], col=self._you_are_here[0]))
+
+        # you_are_here = (att: str, cutoff, side: str) todo: function handle X_td as dataframe, list, etc...
+        if self.running_da_con_shift:
+            if len(self._you_are_here) == 1:
                 # root node
                 y_td = self.y_td.copy()
                 X_td = self.X_td.copy()
             else:
+                print(self._you_are_here)
+                y_td = self.y_td.copy()
+                X_td = self.X_td.copy()
+
                 # all other nodes
                 # current_path = self.get_current_path() todo
-                if self.you_are_here[1] in self.cat:
-                    cond = self.X_td[self.you_are_here[1]] == self.you_are_here[2]
-                else:
-                    cond = self.X_td[self.you_are_here[1]] < self.you_are_here[2]
-                if self.you_are_here[3] == 'lhs':
-                    y_td = self.y_td[cond].copy()
-                    X_td = self.X_td[cond].copy()
-                else:  # self.you_are_here[3] == 'rhs'
-                    y_td = self.y_td[~cond].copy()
-                    X_td = self.X_td[~cond].copy()
+
+                # if self.you_are_here[1] in self.cat:
+                #     cond = self.X_td[self.you_are_here[1]] == self.you_are_here[2]
+                # else:
+                #     cond = self.X_td[self.you_are_here[1]] < self.you_are_here[2]
+                # if self.you_are_here[3] == 'lhs':
+                #     y_td = self.y_td[cond].copy()
+                #     X_td = self.X_td[cond].copy()
+                # else:  # self.you_are_here[3] == 'rhs'
+                #     y_td = self.y_td[~cond].copy()
+                #     X_td = self.X_td[~cond].copy()
         else:
             y_td = None
             X_td = None
@@ -168,7 +170,7 @@ class DecisionTreeClassifier(object):
         best_cutoff = None
         for c in X.columns:
             is_cat = c in self.cat
-            if self.running_da_tree:
+            if self.running_da_con_shift:
                 gain, cur_cutoff = self.da_find_best_split_attribute(X[c], y, is_cat, X_td[c], y_td, self.alpha)
             else:
                 gain, cur_cutoff = self.find_best_split_attribute(X[c], y, is_cat)
@@ -191,7 +193,7 @@ class DecisionTreeClassifier(object):
         for value in values:
             cond = x == value if is_cat else x < value
             n_left = sum(cond)
-            if n_left < self.min_cases:  # todo: might introduce bias by for first min values
+            if n_left < self.min_cases:
                 continue
             n_right = n_tot - n_left
             if n_right < self.min_cases:
@@ -222,7 +224,7 @@ class DecisionTreeClassifier(object):
             cond = x == value if is_cat else x < value
             cond_for_td = x_td == value if is_cat else x_td < value  # index must align for x_td and y_td
             n_left = sum(cond)
-            if n_left < self.min_cases:  # todo: might introduce bias by for first min values
+            if n_left < self.min_cases:
                 continue
             n_right = n_tot - n_left
             if n_right < self.min_cases:
@@ -250,7 +252,7 @@ class DecisionTreeClassifier(object):
         return ent
 
     @staticmethod
-    def da_info(y_values: List[int], y_source: Series, y_target: Series, alpha: float):
+    def da_info(y_values: List[int], y_source: Series, y_target: Series, alpha: float):  # todo: da_info for X_td only
         # source domain
         vc_s = y_source.value_counts()
         tot_s = len(y_source)
