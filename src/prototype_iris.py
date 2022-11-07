@@ -22,17 +22,19 @@ target_df = X_test.copy()
 target_df['y'] = y_test.copy()
 target_df.reset_index(inplace=True, drop=True)
 
+# current_path example: [('petal length (cm)', 3.0, 'right'), ('petal width (cm)', 1.8, 'left')]
+
 # # standard dt
-org_clf = DecisionTreeClassifier(max_depth=5)
-org_clf.fit(X_train, y_train)
-# pprint(org_clf.tree)
-org_pred = org_clf.predict(X_test)
-org_accuracy = print_scores(y_test, org_pred['prediction'])
-print(org_accuracy)
+# org_clf = DecisionTreeClassifier(max_depth=5)
+# org_clf.fit(X_train, y_train)
+# # pprint(org_clf.tree)
+# org_pred = org_clf.predict(X_test)
+# org_accuracy = print_scores(y_test, org_pred['prediction'])
+# print(org_accuracy)
 
 # domain adapted dt (v1)
 da1_clf = DecisionTreeClassifier(max_depth=5)
-da1_clf.fit(X_train, y_train, alpha=0.75, X_td=X_test, y_td=y_test)
+da1_clf.fit(X_train, y_train, alpha=0.75, X_td=X_test, )
 # pprint(da1_clf.tree)
 da1_pred = da1_clf.predict(X_test)
 da1_accuracy = print_scores(y_test, da1_pred['prediction'])
