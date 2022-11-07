@@ -34,7 +34,7 @@ class DecisionTreeClassifier(object):
         # domain adaptation params
         if X_td is not None:
             self.running_da_cov_shift = True
-        # if X_td is not None and y_td is not None:  todo later?
+        # if X_td is not None and y_td is not None:
         #     self.running_da_con_shift = True
         self.alpha = alpha if alpha is not None else alpha
         self.X_td = X_td if X_td is not None else X_td
@@ -119,13 +119,15 @@ class DecisionTreeClassifier(object):
         return target_weights
 
     def find_best_split_of_all(self, X: DataFrame, y: Series):
-
+        # you are here
         if len(self._you_are_here) > 0:  # delete later
             print("you're at the {side} hs of {col}".format(side=self._you_are_here[2], col=self._you_are_here[0]))
         else:
             print("root node")
-
+        # extract the target weights as a dictionary
         if self.running_da_cov_shift:
+            print('current path:')
+            print(self._current_path)
             target_weights = self.get_target_weights(self._current_path, X)
         else:
             target_weights = None
@@ -182,37 +184,6 @@ class DecisionTreeClassifier(object):
                 best_cutoff = value
         return best_gain, best_cutoff
 
-    def da_find_best_split_attribute_v0(self, x: Series, y: Series, is_cat: bool, x_td: Series, y_td: Series, alpha: float):
-        best_gain = 0
-        best_cutoff = None
-        if is_cat:
-            values = x.unique()
-        else:
-            values = np.sort(x.unique())
-        # get entropy H(T)
-        entropy_total = self.da_info_v0(self.y_values, y, y_td, alpha)
-        n_tot = len(x)
-        for value in values:
-            cond = x == value if is_cat else x < value
-            cond_for_td = x_td == value if is_cat else x_td < value  # index must align for x_td and y_td
-            n_left = sum(cond)
-            if n_left < self.min_cases:
-                continue
-            n_right = n_tot - n_left
-            if n_right < self.min_cases:
-                continue
-            # get entropy H(T|A=a)
-            entropy_left = self.da_info_v0(self.y_values, y[cond], y_td[cond_for_td], self.alpha)     # < value
-            entropy_right = self.da_info_v0(self.y_values, y[~cond], y_td[~cond_for_td], self.alpha)  # >= value
-            left_prop = n_left / n_tot
-            right_prop = 1 - left_prop
-            # Information Gain: H(T) - H(T|A=a)
-            gain = entropy_total - left_prop * entropy_left - right_prop * entropy_right
-            if gain > best_gain:
-                best_gain = gain
-                best_cutoff = value
-        return best_gain, best_cutoff
-
     def da_find_best_split_attribute(self, x: Series, y: Series, is_cat: bool, alpha: float, t_weight: float):
         best_gain = 0
         best_cutoff = None
@@ -233,7 +204,7 @@ class DecisionTreeClassifier(object):
                 continue
             # get entropy H(T|A=a) todo: do we update t_weight under A=a?
             entropy_left = self.da_info(y[cond], t_weight, alpha)     # < value
-            entropy_right = self.da_info(y[~cond], t_weight, alpha)  # >= value
+            entropy_right = self.da_info(y[~cond], t_weight, alpha)   # >= value
             left_prop = n_left / n_tot
             right_prop = 1 - left_prop
             # Information Gain: H(T) - H(T|A=a)
@@ -254,31 +225,6 @@ class DecisionTreeClassifier(object):
         return ent
 
     @staticmethod
-    def da_info_v0(y_values: List[int], y_source: Series, y_target: Series, alpha: float):
-        # v0: requires y_s and y_t, expecting both to be pd.Series - the ideal case
-        # source domain
-        vc_s = y_source.value_counts()
-        tot_s = len(y_source)
-        # target domain
-        vc_t = y_target.value_counts()
-        tot_t = len(y_target)
-        # domain-adaptive entropy
-        ent = 0
-        for val in y_values:  # the values are the (potential) index in value_count
-            if val in vc_s.index:
-                prop_s = vc_s[val] / tot_s
-            else:
-                prop_s = 0.0
-            if val in vc_t.index:
-                prop_t = vc_t[val] / tot_t
-            else:
-                prop_t = 0.0
-            da_prop = (alpha * prop_s + (1 - alpha) * prop_t)
-            if da_prop > 0.0:
-                ent -= da_prop * math.log2(da_prop)
-        return ent
-
-    @staticmethod
     def da_info(y_source: Series, p_target: float, alpha: float):
         vc = y_source.value_counts()
         tot = len(y_source)
@@ -288,6 +234,62 @@ class DecisionTreeClassifier(object):
             da_w = (alpha * prop + (1 - alpha) * p_target)
             ent -= da_w * math.log2(prop)  # todo: or da_w goes in I() too?
         return ent
+
+    # def da_find_best_split_attribute_v0(self, x: Series, y: Series, is_cat: bool, x_td: Series, y_td: Series, alpha: float):
+    #     best_gain = 0
+    #     best_cutoff = None
+    #     if is_cat:
+    #         values = x.unique()
+    #     else:
+    #         values = np.sort(x.unique())
+    #     # get entropy H(T)
+    #     entropy_total = self.da_info_v0(self.y_values, y, y_td, alpha)
+    #     n_tot = len(x)
+    #     for value in values:
+    #         cond = x == value if is_cat else x < value
+    #         cond_for_td = x_td == value if is_cat else x_td < value  # index must align for x_td and y_td
+    #         n_left = sum(cond)
+    #         if n_left < self.min_cases:
+    #             continue
+    #         n_right = n_tot - n_left
+    #         if n_right < self.min_cases:
+    #             continue
+    #         # get entropy H(T|A=a)
+    #         entropy_left = self.da_info_v0(self.y_values, y[cond], y_td[cond_for_td], self.alpha)     # < value
+    #         entropy_right = self.da_info_v0(self.y_values, y[~cond], y_td[~cond_for_td], self.alpha)  # >= value
+    #         left_prop = n_left / n_tot
+    #         right_prop = 1 - left_prop
+    #         # Information Gain: H(T) - H(T|A=a)
+    #         gain = entropy_total - left_prop * entropy_left - right_prop * entropy_right
+    #         if gain > best_gain:
+    #             best_gain = gain
+    #             best_cutoff = value
+    #     return best_gain, best_cutoff
+    #
+    # @staticmethod
+    # def da_info_v0(y_values: List[int], y_source: Series, y_target: Series, alpha: float):
+    #     # v0: requires y_s and y_t, expecting both to be pd.Series - the ideal case
+    #     # source domain
+    #     vc_s = y_source.value_counts()
+    #     tot_s = len(y_source)
+    #     # target domain
+    #     vc_t = y_target.value_counts()
+    #     tot_t = len(y_target)
+    #     # domain-adaptive entropy
+    #     ent = 0
+    #     for val in y_values:  # the values are the (potential) index in value_count
+    #         if val in vc_s.index:
+    #             prop_s = vc_s[val] / tot_s
+    #         else:
+    #             prop_s = 0.0
+    #         if val in vc_t.index:
+    #             prop_t = vc_t[val] / tot_t
+    #         else:
+    #             prop_t = 0.0
+    #         da_prop = (alpha * prop_s + (1 - alpha) * prop_t)
+    #         if da_prop > 0.0:
+    #             ent -= da_prop * math.log2(da_prop)
+    #     return ent
 
     def predict(self, X):
         # results = np.array([0]*len(X))
