@@ -1,13 +1,13 @@
+from utils import split_data, print_scores
 import pandas as pd
 import numpy as np
 from pprint import pprint
 from src.decision_tree_classifier.decision_tree_classifier import DecisionTreeClassifier
-from src.decision_tree_classifier.tools import *
 from sklearn.model_selection import train_test_split
 from sklearn.datasets import load_iris
-iris = load_iris()
 
 # iris as a data frame
+iris = load_iris()
 X = pd.DataFrame(iris.data, columns=iris.feature_names)
 X['y'] = iris.target
 y = X['y']
