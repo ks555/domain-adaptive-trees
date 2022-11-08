@@ -104,9 +104,11 @@ def follow_path(split_path, data):
     return data
 
 
-pop_data = load_folktables_data(['AL', 'CA'], '2017', '1-Year', 'person')
-split_path = [['CIT', 4, 0, True], ['PWGTP', 24, 1, False], ['RAC1P', 3, 1, True]]
-node_data = follow_path(split_path, pop_data)
+if __name__ == "__main__":
+
+    pop_data = load_folktables_data(['AL', 'CA'], '2017', '1-Year', 'person')
+    split_path = [['CIT', 4, 0, True], ['PWGTP', 24, 1, False], ['RAC1P', 3, 1, True]]
+    node_data = follow_path(split_path, pop_data)
 
 # Below this is Kristen's old code, Kristen's new code above, below is very specific to the ISTAT data but
 # I will adjust so that there is a preprocessing step so that IStat data can use the functions about as well
