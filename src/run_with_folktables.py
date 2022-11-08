@@ -11,6 +11,56 @@ data in the future though. This may be done by requiring pre-processing steps of
 (like ISTAT), in fact, perhaps the folktables formate can serve as the template for the required
 pre-processing...
  
+"""
+
+import utils
+import folktables as ft
+import pandas as pd
+from src.decision_tree_classifier import decision_tree_classifier as dtc
+from src.decision_tree_classifier import tools
+from pprint import pprint
+
+# uncomment below (and comment above) to run folktables task
+
+acs_data = utils.load_folktables_data(['CA'], '2017', '1-Year', 'person')
+# load task - just makes numpy arrays of features, labels, protected group category for given task
+# acs_data = utils.load_data(['AL', 'CA'], '2017', '1-Year', 'person')
+features, labels, group = utils.load_task(acs_data, ft.ACSPublicCoverage)
+
+X = pd.DataFrame(features, columns=ft.ACSPublicCoverage.features)
+X['y'] = labels
+y = X['y']
+X = X[ft.ACSPublicCoverage.features]
+
+X_train, X_test, y_train, y_test = tools.split_data(X, y)
+
+clf = dtc.DecisionTreeClassifier(max_depth=7, cat=['test', 'me'])
+clf.fit(X_train, y_train)
+# pprint(clf.tree)
+# create adjusted splitting criterion
+predictions = clf.predict(X_test)
+accuracy = tools.print_scores(y_test, predictions['prediction'])
+
+# acs_data = utils.load_folktables_data(['AL', 'CA'], '2017', '1-Year', 'person')
+# # load task - just makes numpy arrays of features, labels, protected group category for given task
+# # acs_data = utils.load_data(['AL', 'CA'], '2017', '1-Year', 'person')
+# features, labels, group = utils.load_task(acs_data, ft.ACSPublicCoverage)
+#
+# X = pd.DataFrame(features, columns=ft.ACSPublicCoverage.features)
+# y = labels
+#
+# X_train, X_test, y_train, y_test = utils.split_data(X, y)
+#
+# clf = dtc.DecisionTreeClassifier(max_depth=7, cat=['test', 'me'])
+# clf.fit(X_train, y_train)
+# pprint(clf.tree)
+# # create adjusted splitting criterion
+# predictions = clf.predict(X_test)
+# accuracy = print_scores(y_test, predictions['prediction'])
+
+
+"""
+
 -------
 ACSPublicCoverage Task: Predict whether a low-income individual, not eligible for Medicare, has coverage from public 
 health insurance.
@@ -82,26 +132,3 @@ SEX (Sex): Range of values:
 AGEP (Age): Range of values:
 – 0 - 99 (integers) – 0 indicates less than 1 year old.
 '''
-import utils
-import folktables as ft
-import pandas as pd
-import decision_tree_classifier as dtc
-from pprint import pprint
-
-
-acs_data = utils.load_folktables_data(['AL', 'CA'], '2017', '1-Year', 'person')
-# load task - just makes numpy arrays of features, labels, protected group category for given task
-# acs_data = utils.load_data(['AL', 'CA'], '2017', '1-Year', 'person')
-features, labels, group = utils.load_task(acs_data, ft.ACSPublicCoverage)
-
-X = pd.DataFrame(features, columns=ft.ACSPublicCoverage.features)
-y = labels
-
-X_train, X_test, y_train, y_test = utils.split_data(X, y)
-
-clf = dtc.DecisionTreeClassifier(max_depth=7, cat=['test', 'me'])
-clf.fit(X_train, y_train)
-pprint(clf.tree)
-# create adjusted splitting criterion
-predictions = clf.predict(X_test)
-accuracy = print_scores(y_test, predictions['prediction'])

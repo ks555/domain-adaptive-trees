@@ -21,8 +21,6 @@ def load_folktables_data(states=["CA"], survey_year='2018', horizon='1-Year', su
         # get state code
         code = state_codes.loc[state_codes['USPS'] == states[0]]['numeric'].values[0]
         data_path = os.path.join(root_dir, "data", survey_year, horizon, f"psam_p{code}.csv")
-        print(root_dir)
-        print(data_path)
         # This file path works with person, not household survey
         if os.path.exists(data_path):
 
