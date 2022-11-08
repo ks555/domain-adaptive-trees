@@ -1,4 +1,10 @@
-# -*- coding: utf-8 -*-
+from utils import split_data, print_scores
+from src.decision_tree_classifier.decision_tree_classifier import DecisionTreeClassifier
+import folktables as ft
+import pandas as pd
+from pprint import pprint
+from utils import load_folktables_data, load_task
+
 """
 Created on October 7, 2022
 
@@ -132,3 +138,22 @@ SEX (Sex): Range of values:
 AGEP (Age): Range of values:
 – 0 - 99 (integers) – 0 indicates less than 1 year old.
 '''
+
+acs_data = load_folktables_data(['AL', 'CA'], '2017', '1-Year', 'person')
+# load task - just makes numpy arrays of features, labels, protected group category for given task
+# acs_data = utils.load_data(['AL', 'CA'], '2017', '1-Year', 'person')
+features, labels, group = load_task(acs_data, ft.ACSPublicCoverage)
+
+X = pd.DataFrame(features, columns=ft.ACSPublicCoverage.features)
+y = labels
+
+X_train, X_test, y_train, y_test = split_data(X, y)
+
+clf = DecisionTreeClassifier(max_depth=7)
+clf.fit(X_train, y_train, cat_atts=['test', 'me'])
+pprint(clf.tree)
+# create adjusted splitting criterion
+predictions = clf.predict(X_test)
+accuracy = print_scores(y_test, predictions['prediction'])
+
+
