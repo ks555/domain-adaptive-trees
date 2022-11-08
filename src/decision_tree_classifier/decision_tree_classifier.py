@@ -143,7 +143,7 @@ class DecisionTreeClassifier(object):
                     gain, cur_cutoff = self.da_find_best_split_attribute(X[c], y, is_cat, self.alpha, target_weights[c])
                 # otherwise: alpha=1.0 to use only source domain info; t_weight=0.0 to keep function arch
                 else:
-                    gain, cur_cutoff = self.da_find_best_split_attribute(X[c], y, is_cat, 1.0, 0.0)
+                    gain, cur_cutoff = self.da_find_best_split_attribute(X[c], y, is_cat, 1.0, 0.0)  # just call self.info?
             # standard information gain
             else:
                 gain, cur_cutoff = self.find_best_split_attribute(X[c], y, is_cat)
