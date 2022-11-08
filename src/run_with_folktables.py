@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from utils import split_data, print_scores
 from src.decision_tree_classifier.decision_tree_classifier import DecisionTreeClassifier
 import folktables as ft
