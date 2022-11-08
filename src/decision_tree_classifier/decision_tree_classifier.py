@@ -315,31 +315,32 @@ class DecisionTreeClassifier(object):
 # EOF
 #
 
-if __name__ == "__main__":
-    from sklearn.datasets import load_iris, load_boston
-    import folktables as ft
 
-    iris = load_iris()
-    # boston = load_boston()
-
-    from tools import *
-    from pprint import pprint
-    import src.utils
-
-    # X = iris.data
-    X = pd.DataFrame(iris.data, columns=iris.feature_names)
-    X['y'] = iris.target
-    y = X['y']
-    X = X[iris.feature_names]
-
-    X_train, X_test, y_train, y_test = split_data(X, y)
-
-    clf = DecisionTreeClassifier(max_depth=7, cat=['test', 'me'])
-    clf.fit(X_train, y_train)
-    pprint(clf.tree)
-    # create adjusted splitting criterion
-    predictions = clf.predict(X_test)
-    accuracy = print_scores(y_test, predictions['prediction'])
+# if __name__ == "__main__":
+#     from sklearn.datasets import load_iris, load_boston
+#     import folktables as ft
+#
+#     iris = load_iris()
+#     # boston = load_boston()
+#
+#     from src.utils import split_data, print_scores
+#     from pprint import pprint
+#     import src.utils
+#
+#     # X = iris.data
+#     X = pd.DataFrame(iris.data, columns=iris.feature_names)
+#     X['y'] = iris.target
+#     y = X['y']
+#     X = X[iris.feature_names]
+#
+#     X_train, X_test, y_train, y_test = split_data(X, y)
+#
+#     clf = DecisionTreeClassifier(max_depth=7, cat=['test', 'me'])  # todo: old version: delete
+#     clf.fit(X_train, y_train)
+#     pprint(clf.tree)
+#     # create adjusted splitting criterion
+#     predictions = clf.predict(X_test)
+#     accuracy = print_scores(y_test, predictions['prediction'])
 
 
     #### uncomment below (and comment above) to run folktables task
