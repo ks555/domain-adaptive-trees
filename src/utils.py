@@ -65,6 +65,11 @@ def get_proportion_groupby(pop_data, group_column, threshold=None):
 # path will be col, split value, left or right, categorical true or false - over multiple splits
 # leads to the single node of interest, returns and / or saves the instances that exist at that node
 # ex. of path: split_path = [['CIT', 4, 0, True], ['PWGTP', 24, 1, False], ['RAC1P, 3', 1, True]]
+
+# JA: maybe we could -1 for left and 1 for right
+# the categorical part we have access to it via self.cat already
+# also, a list of tuples to preserve the internal order? [('CIT', 4, -1), ]
+
 def follow_path(split_path, data):
     for i in range(0, len(split_path)):
         # if feature is categorical:

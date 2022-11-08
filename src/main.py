@@ -17,7 +17,7 @@ import pandas as pd
 import pickle
 import time
 
-
+# TODO: clean up file (main should only run a working example; load_ functions can go under tools or utils or data)
 start_time = time.time()
 
 
