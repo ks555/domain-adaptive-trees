@@ -10,14 +10,13 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn import tree
 from pprint import pprint
-from src.decision_tree_classifier import org_decision_tree_classifier
 from encoding import encode_attributes
 import category_encoders as ce
 import pandas as pd
 import pickle
 import time
 
-# TODO: clean up file (main should only run a working example; load_ functions can go under tools or utils or data)
+# TODO: update main
 start_time = time.time()
 
 
