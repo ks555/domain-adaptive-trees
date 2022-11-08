@@ -2,6 +2,7 @@
 import folktables as ft
 import pandas as pd
 import os
+import settings
 
 # todo: Kristen's list
 # 4. Combining...gender, income etc...
@@ -9,26 +10,31 @@ import os
 # 6. Get or make a csv of col datatypes - maybe just Categorical or Not?
 
 
-def load_data(states=["CA"], survey_year='2018', horizon='1-Year', survey='person'):
+def load_folktables_data(states=["CA"], survey_year='2018', horizon='1-Year', survey='person'):
     # add check for data, so it doesn't need to download
-    state_codes = pd.read_csv('../data/adult/state_codes.csv')
+    root_dir = settings.PROJECT_ROOT
+    state_codes = pd.read_csv(os.path.join(root_dir, 'data', 'adult', 'state_codes.csv'))
     acs_data = pd.DataFrame()
     # To avoid downloading each time, check per state if downloaded, if not download
     # Either way, append the state data to acs_data data frame, updating the region field
     for i in range(0, len(states)):
         # get state code
         code = state_codes.loc[state_codes['USPS'] == states[0]]['numeric'].values[0]
-        # Format properly, include state code
+        data_path = os.path.join(root_dir, "data", survey_year, horizon, f"psam_p{code}.csv")
+        print(root_dir)
+        print(data_path)
         # This file path works with person, not household survey
-        if os.path.exists(f"../data/{survey_year}/{horizon}/psam_p{code}.csv"):
+        if os.path.exists(data_path):
+
+        # if os.path.exists(f"../data/{survey_year}/{horizon}/psam_p{code}.csv"):
             # load from csv, update to region == i, append to acs_data
-            state_data = pd.DataFrame(f"../data/{survey_year}/{horizon}/psam_p{code}.csv")
+            state_data = pd.DataFrame(data_path)
             state_data.REGION = i = i+1
             acs_data = acs_data.append(state_data, ignore_index=True)
         else:
             # download that state
             data_source = ft.ACSDataSource(survey_year=survey_year,
-                                           horizon=horizon, survey=survey, root_dir='../data/adult')
+                                           horizon=horizon, survey=survey, root_dir=os.path.join(root_dir, 'data', 'adult'))
             state_data = data_source.get_data(states=[states[i]], download=True)
             state_data.REGION = i = i+1
             # append to acs_data
@@ -83,7 +89,7 @@ def follow_path(split_path, data):
     return data
 
 
-pop_data = load_data(['AL', 'CA'], '2017', '1-Year', 'person')
+pop_data = load_folktables_data(['AL', 'CA'], '2017', '1-Year', 'person')
 split_path = [['CIT', 4, 0, True], ['PWGTP', 24, 1, False], ['RAC1P', 3, 1, True]]
 node_data = follow_path(split_path, pop_data)
 
