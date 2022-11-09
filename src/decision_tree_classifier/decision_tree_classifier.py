@@ -14,7 +14,6 @@ class DecisionTreeClassifier(object):
         self.cat = None
         self.tree = None
 
-        self._you_are_here = ()
         self._current_path = []
         self.running_da_cov_shift = False  # covariate shift
         self.running_da_con_shift = False  # concept shift
@@ -78,15 +77,13 @@ class DecisionTreeClassifier(object):
 
         prev_path = self._current_path.copy()
         # generate tree for the left hand side data
-        self._you_are_here = (col, cutoff, 'left')
-        self._current_path = prev_path + [self._you_are_here]
+        self._current_path = prev_path + [(col, cutoff, 'left')]
         X_left = X[cond]    # < value
         y_left = y[cond]    # left hand side data
         par_node['left'], dleft = self.build(X_left, y_left, depth + 1)
 
         # generate tree for the right hand side data
-        self._you_are_here = (col, cutoff, 'right')
-        self._current_path = prev_path + [self._you_are_here]
+        self._current_path = prev_path + [(col, cutoff, 'right')]
         X_right = X[~cond]  # >= value
         y_right = y[~cond]  # right hand side data
         par_node['right'], dright = self.build(X_right, y_right, depth + 1)
@@ -105,8 +102,7 @@ class DecisionTreeClassifier(object):
         #      target_weights[c][value] is the target P(c<value)
         target_weights = dict()
         if self.X_td is None:
-            for c in X.columns:
-                target_weights[c] = None
+            target_weights = {c:None for c in X.columns}
             return target_weights
 
         current_path = self._current_path
