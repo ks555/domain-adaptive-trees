@@ -13,14 +13,12 @@ class DecisionTreeClassifier(object):
         self.min_cases = 5
         self.cat = None
         self.tree = None
-
         self._current_path = []
         self.running_da_cov_shift = False  # covariate shift
         self.running_da_con_shift = False  # concept shift
         self.alpha = 0.5
         self.X_td = None
         self.y_td = None
-
         self.y_values = None  # values are based on the source domain todo: might have to delete
 
     def fit(self, X: DataFrame, y: Series, cat_atts: List[str] = None,
@@ -102,7 +100,7 @@ class DecisionTreeClassifier(object):
         #      target_weights[c][value] is the target P(c<value)
         target_weights = dict()
         if self.X_td is None:
-            target_weights = {c:None for c in X.columns}
+            target_weights = {c: None for c in X.columns}
             return target_weights
 
         current_path = self._current_path
@@ -119,15 +117,15 @@ class DecisionTreeClassifier(object):
             freqs = X_td_current[c].value_counts(normalize=True).to_dict()
             values = X[c].unique()
             if c in self.cat:
-                target_weights[c] = {value:(freqs[value] if value in freqs else 0) for value in values}
+                target_weights[c] = {value: (freqs[value] if value in freqs else 0) for value in values}
             else:
-                target_weights[c] = {value:sum(freqs[v] for v in freqs if v<value) for value in values}
+                target_weights[c] = {value: sum(freqs[v] for v in freqs if v < value) for value in values}
 
         return target_weights
 
     def find_best_split_of_all(self, X: DataFrame, y: Series):
         # extract the target weights as a dictionary
-        target_weights = self.get_target_weights(X) if  self.running_da_cov_shift else None
+        target_weights = self.get_target_weights(X) if self.running_da_cov_shift else None
         best_gain = 0
         best_col = None
         best_cutoff = None
