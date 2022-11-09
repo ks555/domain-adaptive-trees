@@ -5,6 +5,7 @@ from pprint import pprint
 from src.decision_tree_classifier.decision_tree_classifier import DecisionTreeClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.datasets import load_iris
+import sys
 
 # iris as a data frame
 iris = load_iris()
@@ -14,8 +15,8 @@ y = X['y']
 X = X[iris.feature_names]
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
-print(X_train.shape)
-print(X_test.shape)
+print('X_train.shape', X_train.shape)
+print('X_test.shape', X_test.shape)
 
 # my "target domain"
 target_df = X_test.copy()
@@ -30,15 +31,16 @@ org_clf.fit(X_train, y_train)
 # pprint(org_clf.tree)
 org_pred = org_clf.predict(X_test)
 org_accuracy = print_scores(y_test, org_pred['prediction'])
-print(org_accuracy)
+print('org_clf accuracy:', org_accuracy)
 
 # domain adapted dt (v1)
 da1_clf = DecisionTreeClassifier(max_depth=5)
-da1_clf.fit(X_train, y_train, alpha=0.75, X_td=X_test, )
+da1_clf.fit(X_train, y_train, alpha=0.75, X_td=X_test)
 # pprint(da1_clf.tree)
 da1_pred = da1_clf.predict(X_test)
 da1_accuracy = print_scores(y_test, da1_pred['prediction'])
 print(da1_accuracy)
+sys.exit(0)
 
 # domain adapted dt (v2)
 da2_clf = DecisionTreeClassifier(max_depth=5)
