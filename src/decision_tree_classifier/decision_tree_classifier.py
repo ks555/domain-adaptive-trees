@@ -190,7 +190,7 @@ class DecisionTreeClassifier(object):
             entropy_right = self.info(y[~cond])   # >= value
             # here it goes the mitigation strategy
             # t_weight[value] is the target P(X=value) if is_cat else P(X<value)
-            left_prop = alpha*(n_left/n_tot) + (1-alpha)*t_weight[value]
+            left_prop = alpha * (n_left / n_tot) + (1 - alpha) * t_weight[value]
             right_prop = 1 - left_prop
             # Information Gain: H(T) - H(T|A=a)
             gain = entropy_total - left_prop * entropy_left - right_prop * entropy_right
@@ -201,10 +201,10 @@ class DecisionTreeClassifier(object):
 
     @staticmethod
     def info(y: Series):
-        props = y.value_counts()/len(y)
+        props = y.value_counts() / len(y)
         ent = 0
         for prop in props:
-            ent -= prop * math.log2(prop) if prop>0 else 0
+            ent -= prop * math.log2(prop) if prop > 0 else 0
         return ent
 
     def predict(self, X):
