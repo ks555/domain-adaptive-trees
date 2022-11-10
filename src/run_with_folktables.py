@@ -4,6 +4,8 @@ import folktables as ft
 import pandas as pd
 from pprint import pprint
 from utils import load_folktables_data, load_task
+from sklearn.metrics import accuracy_score
+
 
 """
 Created on October 7, 2022
@@ -19,51 +21,65 @@ pre-processing...
  
 """
 
-import utils
-import folktables as ft
-import pandas as pd
-from src.decision_tree_classifier import decision_tree_classifier as dtc
-from src.decision_tree_classifier import tools
-from pprint import pprint
+source_states = ['AL']
+source_year = '2017'
+target_states = ['OH']
+target_year = '2017'
+source_data = load_folktables_data(source_states, source_year, '1-Year', 'person')
+target_data = load_folktables_data(target_states, target_year, '1-Year', 'person')
 
-# uncomment below (and comment above) to run folktables task
 
-acs_data = utils.load_folktables_data(['CA'], '2017', '1-Year', 'person')
-# load task - just makes numpy arrays of features, labels, protected group category for given task
-# acs_data = utils.load_data(['AL', 'CA'], '2017', '1-Year', 'person')
-features, labels, group = utils.load_task(acs_data, ft.ACSPublicCoverage)
+# create dataframes, with column names, of the features and labels, from source
+# load task for source - makes numpy arrays of features, labels, protected group category for given folktables task
+features_s, labels_s, group_s = load_task(source_data, ft.ACSPublicCoverage)
+X_s = pd.DataFrame(features_s, columns=ft.ACSPublicCoverage.features)
+X_s['y'] = labels_s
+y_s = X_s['y']
+X_s = X_s[ft.ACSPublicCoverage.features]
+# create train and test set from source
+X_train_s, X_test_s, y_train_s, y_test_s = split_data(X_s, y_s)
 
-X = pd.DataFrame(features, columns=ft.ACSPublicCoverage.features)
-X['y'] = labels
-y = X['y']
-X = X[ft.ACSPublicCoverage.features]
+# create same dataframes from target
+features_t, labels_t, group_t = load_task(target_data, ft.ACSPublicCoverage)
+X_t = pd.DataFrame(features_t, columns=ft.ACSPublicCoverage.features)
+X_t['y'] = labels_t
+y_t = X_t['y']
+X_t = X_t[ft.ACSPublicCoverage.features]
+# create train and test set from target
+X_train_t, X_test_t, y_train_t, y_test_t = split_data(X_t, y_t)
 
-X_train, X_test, y_train, y_test = tools.split_data(X, y)
+# Vanilla trees
 
-clf = dtc.DecisionTreeClassifier(max_depth=7, cat=['test', 'me'])
-clf.fit(X_train, y_train)
-# pprint(clf.tree)
-# create adjusted splitting criterion
-predictions = clf.predict(X_test)
-accuracy = tools.print_scores(y_test, predictions['prediction'])
+# train vanilla classifier on source, test on source
+clf_org = DecisionTreeClassifier(max_depth=3, cat=['test', 'me'])
+clf_org.fit(X_train_s, y_train_s)
+# test on test set from source
+predictions_org = clf_org.predict(X_test_s)
+accuracy_org_1 = accuracy_score(y_test_s, predictions_org['prediction'])
+print(f'Accuracy of vanilla DT tested on source: {accuracy_org_1}')
 
-# acs_data = utils.load_folktables_data(['AL', 'CA'], '2017', '1-Year', 'person')
-# # load task - just makes numpy arrays of features, labels, protected group category for given task
-# # acs_data = utils.load_data(['AL', 'CA'], '2017', '1-Year', 'person')
-# features, labels, group = utils.load_task(acs_data, ft.ACSPublicCoverage)
-#
-# X = pd.DataFrame(features, columns=ft.ACSPublicCoverage.features)
-# y = labels
-#
-# X_train, X_test, y_train, y_test = utils.split_data(X, y)
-#
-# clf = dtc.DecisionTreeClassifier(max_depth=7, cat=['test', 'me'])
-# clf.fit(X_train, y_train)
-# pprint(clf.tree)
-# # create adjusted splitting criterion
-# predictions = clf.predict(X_test)
-# accuracy = print_scores(y_test, predictions['prediction'])
+# train vanilla classifier on source, test on target
+clf_org = DecisionTreeClassifier(max_depth=3, cat=['test', 'me'])
+clf_org.fit(X_train_s, y_train_s)
+# test on test set from target
+predictions_org = clf_org.predict(X_test_t)
+accuracy_org_2 = accuracy_score(y_test_t, predictions_org['prediction'])
+print(f'Accuracy of vanilla DT tested on target: {accuracy_org_2}')
 
+
+# DA Adapted trees
+
+alpha = 0.9
+# train DA classifier on source, with intervention from target (X only), test on target
+clf_da = DecisionTreeClassifier(max_depth=3, cat=['test', 'me'])
+clf_da.fit(X_train_s, y_train_s, alpha=alpha, X_td=X_train_t)
+predictions_da = clf_da.predict(X_test_t)
+accuracy_da_1 = accuracy_score(y_test_t, predictions_da['prediction'])
+print(f'Accuracy of DA-DT tested on target: {accuracy_da_1} with alpha {alpha}')
+
+print(f'Accuracy of vanilla DT tested on source: {accuracy_org_1}')
+print(f'Accuracy of vanilla DT tested on target: {accuracy_org_2}')
+print(f'Accuracy of DA-DT tested on target: {accuracy_da_1} with alpha {alpha}')
 
 """
 
@@ -138,22 +154,3 @@ SEX (Sex): Range of values:
 AGEP (Age): Range of values:
 – 0 - 99 (integers) – 0 indicates less than 1 year old.
 '''
-
-acs_data = load_folktables_data(['AL', 'CA'], '2017', '1-Year', 'person')
-# load task - just makes numpy arrays of features, labels, protected group category for given task
-# acs_data = utils.load_data(['AL', 'CA'], '2017', '1-Year', 'person')
-features, labels, group = load_task(acs_data, ft.ACSPublicCoverage)
-
-X = pd.DataFrame(features, columns=ft.ACSPublicCoverage.features)
-y = labels
-
-X_train, X_test, y_train, y_test = split_data(X, y)
-
-clf = DecisionTreeClassifier(max_depth=7)
-clf.fit(X_train, y_train, cat_atts=['test', 'me'])
-pprint(clf.tree)
-# create adjusted splitting criterion
-predictions = clf.predict(X_test)
-accuracy = print_scores(y_test, predictions['prediction'])
-
-
