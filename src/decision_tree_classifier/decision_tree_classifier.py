@@ -107,10 +107,10 @@ class DecisionTreeClassifier(object):
         # map current_path to the subset of X_td satisfying current_path
         cond = None
         for att, thr, di in current_path:
-           con = self.X_td[att] == thr if att in self.cat else self.X_td[att] < thr
-           if di == 'right':
-               con = ~con
-           cond = con if cond is None else cond & con
+            con = self.X_td[att] == thr if att in self.cat else self.X_td[att] < thr
+            if di == 'right':
+                con = ~con
+            cond = con if cond is None else cond & con
         #
         X_td_current = self.X_td[cond] if cond is not None else self.X_td                
         for c in X.columns:
