@@ -59,12 +59,12 @@ class DecisionTreeClassifier(object):
         if depth >= self.max_depth:
             print('a leaf!')
             return {'type': 'leaf',
-                    'val': stats.mode(y, keepdims=True).mode[0], 'tot': leny, 'dist': y.value_counts(sort=False) / leny}, 0
+                    'val': y.mode()[0], 'tot': leny, 'dist': y.value_counts(sort=False) / leny}, 0
         # recursive case:
         col, cutoff, gain = self.find_best_split_of_all(X, y)  # find one split given an information gain
         if col is None:  # no split improves
             return {'type': 'leaf',
-                    'val': stats.mode(y, keepdims=True).mode[0], 'tot': leny, 'dist': y.value_counts(sort=False) / leny}, 0
+                    'val': y.mode()[0], 'tot': leny, 'dist': y.value_counts(sort=False) / leny}, 0
         if col in self.cat:  # split for cont. vars; all-but for cat. vars
             cond = X[col] == cutoff
         else:
