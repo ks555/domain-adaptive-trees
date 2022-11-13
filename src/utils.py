@@ -8,8 +8,6 @@ import os
 import settings
 
 # todo: Kristen's list
-# 4. Combining...gender, income etc...
-# 5. Check that this works with race, citizenship etc. (any encoding issue?)
 # 6. Get or make a csv of col datatypes - maybe just Categorical or Not?
 
 

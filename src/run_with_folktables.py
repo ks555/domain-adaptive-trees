@@ -48,38 +48,56 @@ X_t = X_t[ft.ACSPublicCoverage.features]
 # create train and test set from target
 X_train_t, X_test_t, y_train_t, y_test_t = split_data(X_t, y_t)
 
-# Vanilla trees
 
-# train vanilla classifier on source, test on source
-clf_org = DecisionTreeClassifier(max_depth=3, cat=['test', 'me'])
-clf_org.fit(X_train_s, y_train_s)
-# test on test set from source
-predictions_org = clf_org.predict(X_test_s)
-accuracy_org_1 = accuracy_score(y_test_s, predictions_org['prediction'])
-print(f'Accuracy of vanilla DT tested on source: {accuracy_org_1}')
-
-# train vanilla classifier on source, test on target
-clf_org = DecisionTreeClassifier(max_depth=3, cat=['test', 'me'])
-clf_org.fit(X_train_s, y_train_s)
-# test on test set from target
-predictions_org = clf_org.predict(X_test_t)
-accuracy_org_2 = accuracy_score(y_test_t, predictions_org['prediction'])
-print(f'Accuracy of vanilla DT tested on target: {accuracy_org_2}')
+def run_tree(X_train, y_train, X_test, y_test, X_td=None, alpha=0.5, max_depth=5, cat=[]):
+    clf = DecisionTreeClassifier(max_depth)
+    clf.fit(X_train, y_train, cat, alpha, X_td)
+    predictions = clf.predict(X_test)
+    accuracy = accuracy_score(y_test, predictions['prediction'])
+    return accuracy
 
 
-# DA Adapted trees
+accuracy_1 = run_tree(X_train_s, y_train_s, X_test_s, y_test_s, max_depth=3)
+accuracy_2 = run_tree(X_train_s, y_train_s, X_test_t, y_test_t, max_depth=3)
+accuracy_3 = run_tree(X_train_s, y_train_s, X_test_t, y_test_t, X_td=X_test_t, max_depth=3)
 
-alpha = 0.9
-# train DA classifier on source, with intervention from target (X only), test on target
-clf_da = DecisionTreeClassifier(max_depth=3, cat=['test', 'me'])
-clf_da.fit(X_train_s, y_train_s, alpha=alpha, X_td=X_train_t)
-predictions_da = clf_da.predict(X_test_t)
-accuracy_da_1 = accuracy_score(y_test_t, predictions_da['prediction'])
-print(f'Accuracy of DA-DT tested on target: {accuracy_da_1} with alpha {alpha}')
+print(f'Accuracy of vanilla DT tested on source: {accuracy_1}')
+print(f'Accuracy of vanilla DT tested on target: {accuracy_2}')
+print(f'Accuracy of DA-DT tested on target: {accuracy_3}')
 
-print(f'Accuracy of vanilla DT tested on source: {accuracy_org_1}')
-print(f'Accuracy of vanilla DT tested on target: {accuracy_org_2}')
-print(f'Accuracy of DA-DT tested on target: {accuracy_da_1} with alpha {alpha}')
+
+# #
+# # Vanilla trees
+# # train vanilla classifier on source, test on source
+# clf_org = DecisionTreeClassifier(max_depth=3, cat=['test', 'me'])
+# clf_org.fit(X_train_s, y_train_s)
+# # test on test set from source
+# predictions_org = clf_org.predict(X_test_s)
+# accuracy_org_1 = accuracy_score(y_test_s, predictions_org['prediction'])
+# # print(f'Accuracy of vanilla DT tested on source: {accuracy_org_1}')
+#
+# # train vanilla classifier on source, test on target
+# clf_org = DecisionTreeClassifier(max_depth=3, cat=['test', 'me'])
+# clf_org.fit(X_train_s, y_train_s)
+# # test on test set from target
+# predictions_org = clf_org.predict(X_test_t)
+# accuracy_org_2 = accuracy_score(y_test_t, predictions_org['prediction'])
+# # print(f'Accuracy of vanilla DT tested on target: {accuracy_org_2}')
+#
+#
+# # DA Adapted trees
+#
+# alpha = 0.1
+# # train DA classifier on source, with intervention from target (X only), test on target
+# clf_da = DecisionTreeClassifier(max_depth=3, cat=['test', 'me'])
+# clf_da.fit(X_train_s, y_train_s, alpha=alpha, X_td=X_train_t)
+# predictions_da = clf_da.predict(X_test_t)
+# accuracy_da_1 = accuracy_score(y_test_t, predictions_da['prediction'])
+# # print(f'Accuracy of DA-DT tested on target: {accuracy_da_1} with alpha {alpha}')
+#
+# print(f'Accuracy of vanilla DT tested on source: {accuracy_org_1}')
+# print(f'Accuracy of vanilla DT tested on target: {accuracy_org_2}')
+# print(f'Accuracy of DA-DT tested on target: {accuracy_da_1} with alpha {alpha}')
 
 """
 
