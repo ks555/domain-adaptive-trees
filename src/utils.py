@@ -34,8 +34,6 @@ def load_folktables_data(states=["CA"], survey_year='2018', horizon='1-Year', su
         data_path = os.path.join(root_dir, "data", survey_year, horizon, f"psam_p{code}.csv")
         # This file path works with person, not household survey
         if os.path.exists(data_path):
-
-        # if os.path.exists(f"../data/{survey_year}/{horizon}/psam_p{code}.csv"):
             # load from csv, update to region == i, append to acs_data
             state_data = pd.DataFrame(data_path)
             state_data.REGION = i = i+1
