@@ -15,33 +15,39 @@ Created on October 7, 2022
  
 """
 
-source_states = ['AR']
+source_states = ['CA']
 source_year = '2017'
-target_states = ['CT']
+target_states = ['AL']
 target_year = '2017'
-alpha = 0.1
-source_data = load_folktables_data(source_states, source_year, '1-Year', 'person')
-target_data = load_folktables_data(target_states, target_year, '1-Year', 'person')
+alpha = 0.5
+task = 'ACSPublicCoverage'
 
 
-# create dataframes, with column names, of the features and labels, from source
-# load task for source - makes numpy arrays of features, labels, protected group category for given folktables task
-features_s, labels_s, group_s = load_task(source_data, ft.ACSPublicCoverage)
-X_s = pd.DataFrame(features_s, columns=ft.ACSPublicCoverage.features)
-X_s['y'] = labels_s
-y_s = X_s['y']
-X_s = X_s[ft.ACSPublicCoverage.features]
-# create train and test set from source
-X_train_s, X_test_s, y_train_s, y_test_s = split_data(X_s, y_s)
+def create_dfs(source_states, source_year, target_states, target_year, task='ACSPublicCoverage'):
+    source_data = load_folktables_data(source_states, source_year, '1-Year', 'person')
+    target_data = load_folktables_data(target_states, target_year, '1-Year', 'person')
+    task_method = getattr(ft, task)
+    # load task - makes numpy arrays of features, labels, protected group category for given folktables task
+    # we use this to create dataframes, with column names, of the features and labels, from source
 
-# create same dataframes from target
-features_t, labels_t, group_t = load_task(target_data, ft.ACSPublicCoverage)
-X_t = pd.DataFrame(features_t, columns=ft.ACSPublicCoverage.features)
-X_t['y'] = labels_t
-y_t = X_t['y']
-X_t = X_t[ft.ACSPublicCoverage.features]
-# create train and test set from target
-X_train_t, X_test_t, y_train_t, y_test_t = split_data(X_t, y_t)
+    features_s, labels_s, group_s = load_task(source_data, task_method)
+    X_s = pd.DataFrame(features_s, columns=task_method.features)
+    X_s['y'] = labels_s
+    y_s = X_s['y']
+    X_s = X_s[task_method.features]
+    # create train and test set from source
+    X_train_s, X_test_s, y_train_s, y_test_s = split_data(X_s, y_s)
+
+    # create same dataframes from target
+    features_t, labels_t, group_t = load_task(target_data, task_method)
+    X_t = pd.DataFrame(features_t, columns=task_method.features)
+    X_t['y'] = labels_t
+    y_t = X_t['y']
+    X_t = X_t[task_method.features]
+    # create train and test set from target
+    X_train_t, X_test_t, y_train_t, y_test_t = split_data(X_t, y_t)
+
+    return X_train_s, X_test_s, y_train_s, y_test_s, X_train_t, X_test_t, y_train_t, y_test_t
 
 
 def run_tree(X_train, y_train, X_test, y_test, X_td=None, alpha=0.5, max_depth=5, cat=[]):
@@ -56,37 +62,46 @@ def calculate_fairness():
     pass
 
 
-def create_graph(scores, source_state, target_state):
-    x = scores.keys()
+def create_graph(scores, source_state, target_state, zoom_axis=False):
+    x = 1-np.array(list(scores.keys()))
     y = scores.values()
+
     plt.plot(x, y)
     plt.xlabel('Alpha')
     plt.ylabel("Accuracy")
     plt.title(f"Source {source_state}, Target {target_state}")
+    if not zoom_axis:
+        plt.ylim(0, 1)
+    # after plotting the data, format the labels
+    current_values = plt.gca().get_yticks()
+    plt.gca().set_yticklabels(['{:,.1%}'.format(x) for x in current_values])
     plt.show()
 
 
-def store_results():
+def save_results():
     pass
 
 
-def loop_through_alphas(X_train, y_train, X_test, y_test, X_td=X_test_t, max_depth=5, cat=[]):
+def loop_through_alphas(X_train, y_train, X_test, y_test, X_td=None, max_depth=5, cat=[]):
     scores = {}
     for i in np.arange(0, 1.1, 0.1):
         scores[i] = run_tree(X_train, y_train, X_test, y_test, X_td=X_td, alpha=i, max_depth=5, cat=cat)
     return scores
 
 
-scores = loop_through_alphas(X_train_s, y_train_s, X_test_t, y_test_t, X_td=X_train_t, max_depth=5)
-create_graph(scores, source_states[0], target_states[0])
+def loop_through_sources_targets(sources, targets, max_depth=5, task='ACSPublicCoverage'):
+    scores_dict = {}
+    # if source and target lists are equal, we get all combos of that list
+    # including matching source / target (which is a useful baseline)
+    for source in sources:
+        for target in targets:
+            X_train_s, X_test_s, y_train_s, y_test_s, X_train_t, X_test_t, y_train_t, y_test_t = create_dfs(
+                source_states, source_year, target_states, target_year, task=task)
+            scores_dict[(source, target)] = loop_through_alphas(X_train_s, y_train_s, X_test_t, y_test_t, X_td=X_train_t, max_depth=max_depth)
+    return scores_dict
 
-# accuracy_1 = run_tree(X_train_s, y_train_s, X_test_s, y_test_s, max_depth=5)
-# accuracy_2 = run_tree(X_train_s, y_train_s, X_test_t, y_test_t, max_depth=5)
-# accuracy_3 = run_tree(X_train_s, y_train_s, X_test_t, y_test_t, X_td=X_train_t, max_depth=5)
 
-# print(f'Accuracy of standard DT trained on {source_states[0]}tested on {source_states[0]}: {accuracy_1}')
-# print(f'Accuracy of standard DT trained on {source_states[0]} tested on {target_states[0]}: {accuracy_2}')
-# print(f'Accuracy of DA-DT trained on {source_states[0]} tested on {target_states[0]}, alpha = {alpha}: {accuracy_3}')
+scores_dict = loop_through_sources_targets(['AL'], ['MS', 'AR'])
 
 
 """
