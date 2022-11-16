@@ -67,7 +67,7 @@ def create_graph(scores, source_state, target_state, zoom_axis=False):
     y = scores.values()
 
     plt.plot(x, y)
-    plt.xlabel('Alpha')
+    plt.xlabel('1 - Alpha')
     plt.ylabel("Accuracy")
     plt.title(f"Source {source_state}, Target {target_state}")
     if not zoom_axis:
@@ -76,6 +76,25 @@ def create_graph(scores, source_state, target_state, zoom_axis=False):
     current_values = plt.gca().get_yticks()
     plt.gca().set_yticklabels(['{:,.1%}'.format(x) for x in current_values])
     plt.show()
+
+
+def create_compiled_graph(scores_dict, sources, targets, zoom_axis=True):
+    for source in sources:
+        # make a graph
+        plt.xlabel('1 - Alpha')
+        plt.ylabel("Accuracy")
+        plt.title(f"Source {source}")
+        for target in targets:
+            scores = scores_dict[(source, target)]
+            x = 1 - np.array(list(scores.keys()))
+            y = scores.values()
+            plt.plot(x, y)
+        if not zoom_axis:
+            plt.ylim(0, 1)
+        # after plotting the data, format the labels
+        current_values = plt.gca().get_yticks()
+        plt.gca().set_yticklabels(['{:,.1%}'.format(x) for x in current_values])
+        plt.show()
 
 
 def save_results():
@@ -89,20 +108,20 @@ def loop_through_alphas(X_train, y_train, X_test, y_test, X_td=None, max_depth=5
     return scores
 
 
-def loop_through_sources_targets(sources, targets, max_depth=5, task='ACSPublicCoverage'):
+def loop_through_sources_targets(sources, targets, source_year='2017', target_year='2017', max_depth=5, task='ACSPublicCoverage'):
     scores_dict = {}
     # if source and target lists are equal, we get all combos of that list
     # including matching source / target (which is a useful baseline)
     for source in sources:
         for target in targets:
             X_train_s, X_test_s, y_train_s, y_test_s, X_train_t, X_test_t, y_train_t, y_test_t = create_dfs(
-                source_states, source_year, target_states, target_year, task=task)
+                [source], source_year, [target], target_year, task=task)
             scores_dict[(source, target)] = loop_through_alphas(X_train_s, y_train_s, X_test_t, y_test_t, X_td=X_train_t, max_depth=max_depth)
     return scores_dict
 
 
 scores_dict = loop_through_sources_targets(['AL'], ['MS', 'AR'])
-
+create_compiled_graph(scores_dict, ['AL'], ['MS', 'AR'])
 
 """
 
