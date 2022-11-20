@@ -7,6 +7,7 @@ from utils import load_folktables_data, load_task
 from sklearn.metrics import accuracy_score, confusion_matrix
 import matplotlib.pyplot as plt
 import numpy as np
+import pickle
 
 """
 Created on October 7, 2022
@@ -15,7 +16,7 @@ Created on October 7, 2022
  
 """
 
-source_states = ['CA']
+source_states = ['OH']
 source_year = '2017'
 target_states = ['AL']
 target_year = '2017'
@@ -24,7 +25,7 @@ task = 'ACSPublicCoverage'
 
 
 def create_dfs(source_states, source_year, target_states, target_year, task='ACSPublicCoverage'):
-    source_data = load_folktables_data(source_states, source_year, '1-Year', 'person')
+    source_data = load_folktables_data(source_states, source_year, '1-Year', 'person')  # todo: change to download list of states at once than parse the DF created
     target_data = load_folktables_data(target_states, target_year, '1-Year', 'person')
     task_method = getattr(ft, task)
     # load task - makes numpy arrays of features, labels, protected group category for given folktables task
@@ -58,8 +59,32 @@ def run_tree(X_train, y_train, X_test, y_test, X_td=None, alpha=0.5, max_depth=5
     return accuracy
 
 
-def calculate_fairness():
-    pass
+# returns equalized odds between white and black groups
+def run_tree_full_results(X_train, y_train, X_test, y_test, X_td=None, alpha=0.5, max_depth=5, cat=[]):
+    clf = DecisionTreeClassifier(max_depth)
+    clf.fit(X_train, y_train, cat, alpha, X_td)
+    predictions = clf.predict(X_test)
+    accuracy = accuracy_score(y_test, predictions['prediction'])
+    confusion_values_black = confusion_matrix_values(y_test[(X_test['RAC1P'] == 2)],
+                                                     predictions['prediction'][(X_test.reset_index()['RAC1P'] == 2)])
+    confusion_values_white = confusion_matrix_values(y_test[(X_test['RAC1P'] == 1)], predictions['prediction'][(X_test.reset_index()['RAC1P'] == 1)])
+    # calculate and return equalized odds for white black
+    return accuracy, confusion_values_white[1]-confusion_values_black[1]
+
+
+def confusion_matrix_values(y_test, predictions):
+    """Calculate confusion matrix rates for population or subgroup"""
+    cm = confusion_matrix(y_test, predictions)
+    TN, FP, FN, TP = cm.ravel()
+
+    N = TP + FP + FN + TN  # Total population
+    ACC = (TP + TN) / N  # Accuracy
+    TPR = TP / (TP + FN)  # True positive rate
+    FPR = FP / (FP + TN)  # False positive rate
+    FNR = FN / (TP + FN)  # False negative rate
+    PPP = (TP + FP) / N  # % predicted as positive
+
+    return np.array([ACC, TPR, FPR, FNR, PPP])
 
 
 def create_graph(scores, source_state, target_state, zoom_axis=False):
@@ -78,51 +103,91 @@ def create_graph(scores, source_state, target_state, zoom_axis=False):
     plt.show()
 
 
-def create_compiled_graph(scores_dict, sources, targets, zoom_axis=True):
+def create_compiled_graph(scores_dict, sources, targets, fairness_values_dict=None, zoom_axis=True):
     for source in sources:
         # make a graph
-        plt.xlabel('1 - Alpha')
-        plt.ylabel("Accuracy")
-        plt.title(f"Source {source}")
+        fig, ax = plt.subplots()
+        ax.set_xlabel('1 - Alpha')
+        ax.set_ylabel("Accuracy", color='red')
+        ax.set_title(f"Source {source}")
+        ax2 = ax.twinx()
+        ax2.set_ylabel('Equalized Opportunity', color='blue')
         for target in targets:
             scores = scores_dict[(source, target)]
+            fairness_values = fairness_values_dict[(source, target)]
+            # x values are based on alpha
             x = 1 - np.array(list(scores.keys()))
+            # y values are accuracy for given lambda
             y = scores.values()
-            plt.plot(x, y)
+            tpr = fairness_values.values()
+            # tnr = [item[2] for item in confusion_values.values()]
+            ax.plot(x, y, color='red')
+            ax2.plot(x, tpr, color='blue')
+            # ax2.plot(x, tnr, color='darkblue')
         if not zoom_axis:
-            plt.ylim(0, 1)
+            ax.set_ylim(0.5, 1)
+        ax2.tick_params(axis='y', labelcolor='blue')
+        ax.tick_params(axis='y', labelcolor='red')
         # after plotting the data, format the labels
-        current_values = plt.gca().get_yticks()
-        plt.gca().set_yticklabels(['{:,.1%}'.format(x) for x in current_values])
-        plt.show()
-
-
-def save_results():
-    pass
+        left_values = ax.get_yticks()
+        ax.set_yticklabels(['{:,.1%}'.format(x) for x in left_values])
+        fig.tight_layout()
+        # plt.show()
+        plt.savefig(f"../results/Source_{source}")
 
 
 def loop_through_alphas(X_train, y_train, X_test, y_test, X_td=None, max_depth=5, cat=[]):
     scores = {}
+    confusion_values = {}
     for i in np.arange(0, 1.1, 0.1):
-        scores[i] = run_tree(X_train, y_train, X_test, y_test, X_td=X_td, alpha=i, max_depth=5, cat=cat)
-    return scores
+        scores[i], confusion_values[i] = run_tree_full_results(X_train, y_train, X_test, y_test, X_td=X_td, alpha=i, max_depth=5, cat=cat)
+    return scores, confusion_values
 
 
 def loop_through_sources_targets(sources, targets, source_year='2017', target_year='2017', max_depth=5, task='ACSPublicCoverage'):
     scores_dict = {}
+    confusion_values_dict = {}
     # if source and target lists are equal, we get all combos of that list
     # including matching source / target (which is a useful baseline)
     for source in sources:
         for target in targets:
             X_train_s, X_test_s, y_train_s, y_test_s, X_train_t, X_test_t, y_train_t, y_test_t = create_dfs(
                 [source], source_year, [target], target_year, task=task)
-            scores_dict[(source, target)] = loop_through_alphas(X_train_s, y_train_s, X_test_t, y_test_t, X_td=X_train_t, max_depth=max_depth)
-    return scores_dict
+            scores_dict[(source, target)], confusion_values_dict[(source, target)] = loop_through_alphas(
+                X_train_s, y_train_s, X_test_t, y_test_t, X_td=X_train_t, max_depth=max_depth)
+            pickle.dump(scores_dict, open(f"../results/scores_{source}.pkl", "wb"))
+            pickle.dump(scores_dict, open(f"../results/confusion_{source}.pkl", "wb"))
+
+    return scores_dict, confusion_values_dict
 
 
-scores_dict = loop_through_sources_targets(['AL'], ['MS', 'AR'])
-create_compiled_graph(scores_dict, ['AL'], ['MS', 'AR'])
+def run_it_all():
+    scores_dict, equalized_odds_dict = loop_through_sources_targets(['AL'], ['MS', 'ID'])
+    create_compiled_graph(scores_dict, ['AL'], ['MS', 'ID'], equalized_odds_dict)
 
+
+states = [ 'AK', 'AL', 'AR', 'AZ', 'CA', 'CO', 'CT', 'DC', 'DE', 'FL', 'GA',
+           'HI', 'IA', 'ID', 'IL', 'IN', 'KS', 'KY', 'LA', 'MA', 'MD', 'ME',
+           'MI', 'MN', 'MO', 'MS', 'MT', 'NC', 'ND', 'NE', 'NH', 'NJ', 'NM',
+           'NV', 'NY', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX',
+           'UT', 'VA', 'VT', 'WA', 'WI', 'WV', 'WY']
+
+scores_dict, equalized_odds_dict = loop_through_sources_targets(['MS', 'ID'], ['MS', 'ID'])
+pickle.dump(scores_dict, open(f"../results/scores_dict.pkl", "wb"))
+pickle.dump(equalized_odds_dict, open(f"../results/EO_dict.pkl", "wb"))
+create_compiled_graph(scores_dict, ['MS', 'ID'], ['MS', 'ID'], equalized_odds_dict, False)
+
+
+# Run one tree
+# X_train_s, X_test_s, y_train_s, y_test_s, X_train_t, X_test_t, y_train_t, y_test_t = create_dfs(
+#                 source_states, source_year, target_states, target_year, task=task)
+# accuracy, predictions = run_tree_full_results(X_train_s, y_train_s, X_test_s, y_test_s, X_td=None,
+# alpha=1, max_depth=5, cat=[])
+# confusion_values = confusion_matrix_values(y_test_s, predictions['prediction'])
+# confusion_values_black = confusion_matrix_values(y_test_s[(X_test_s['RAC1P'] == 2)], predictions['prediction'][(X_test_s.reset_index()['RAC1P'] == 2)])
+# confusion_values_white = confusion_matrix_values(y_test_s[(X_test_s['RAC1P'] == 1)], predictions['prediction'][(X_test_s.reset_index()['RAC1P'] == 1)])
+# Equal Opportunity = ratio of EO between groups
+# Equalized odds = EO and also the ratio of false positives
 """
 
 -------

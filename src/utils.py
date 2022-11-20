@@ -11,7 +11,7 @@ import settings
 # 6. Get or make a csv of col datatypes - maybe just Categorical or Not?
 
 
-def split_data(X: DataFrame, y: Series, size: float = 0.5, rs: int = 123):
+def split_data(X: DataFrame, y: Series, size: float = 0.25, rs: int = 123):
     x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=size, random_state=rs)
     return x_train, x_test, y_train, y_test
 
@@ -26,7 +26,7 @@ def load_folktables_data(states=["CA"], survey_year='2018', horizon='1-Year', su
     root_dir = settings.PROJECT_ROOT
     state_codes = pd.read_csv(os.path.join(root_dir, 'data', 'adult', 'state_codes.csv'))
     acs_data = pd.DataFrame()
-    # To avoid downloading each time, check per state if downloaded, if not download
+    # To avoid downloading each time, check per state if downloaded, if not, download
     # Either way, append the state data to acs_data data frame, updating the region field
     for i in range(0, len(states)):
         # get state code
@@ -43,6 +43,7 @@ def load_folktables_data(states=["CA"], survey_year='2018', horizon='1-Year', su
             data_source = ft.ACSDataSource(survey_year=survey_year,
                                            horizon=horizon, survey=survey, root_dir=os.path.join(root_dir, 'data', 'adult'))
             state_data = data_source.get_data(states=[states[i]], download=True)
+            # update the region field so that data can be identified by state
             state_data.REGION = i = i+1
             # append to acs_data
             acs_data = acs_data.append(state_data, ignore_index=True)
