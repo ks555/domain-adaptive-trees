@@ -137,7 +137,10 @@ def create_compiled_graph(scores_dict, sources, targets, fairness_values_dict=No
         ax.set_yticklabels(['{:,.1%}'.format(x) for x in left_values])
         fig.tight_layout()
         # plt.show()
-        plt.savefig(f"../results/Source_{source}.jpg")
+        try:
+            plt.savefig(f"../results/Source_{source}.jpg")
+        except:
+            plt.savefig(f"results/Source_{source}.jpg")
 
 
 
@@ -164,8 +167,12 @@ def loop_through_sources_targets(sources, targets, source_year='2017', target_ye
                     X_train_s, y_train_s, X_test_t, y_test_t, X_td=X_train_t, max_depth=max_depth)
             except:
                 print(f'failed to run for {source}, {target}')
-            pickle.dump(scores_dict, open(f"../results/scores_{source}.pkl", "wb"))
-            pickle.dump(confusion_values_dict, open(f"../results/confusion_{source}.pkl", "wb"))
+            try:
+                pickle.dump(scores_dict, open(f"../results/scores_{source}.pkl", "wb"))
+                pickle.dump(confusion_values_dict, open(f"../results/confusion_{source}.pkl", "wb"))
+            except:
+                pickle.dump(scores_dict, open(f"results/scores_{source}.pkl", "wb"))
+                pickle.dump(confusion_values_dict, open(f"results/confusion_{source}.pkl", "wb"))
 
     return scores_dict, confusion_values_dict
 
@@ -183,8 +190,8 @@ states = ['AK', 'AL', 'AR', 'AZ', 'CA', 'CO', 'CT', 'DC', 'DE', 'FL', 'GA',
 
 
 scores_dict, equalized_odds_dict = loop_through_sources_targets(['AR'], ['AZ'])
-pickle.dump(scores_dict, open(f"../results/scores_dict{datetime.now().strftime('%m%d%Y_%H%M%S')}.pkl", "wb"))
-pickle.dump(equalized_odds_dict, open(f"../results/EO_dict{datetime.now().strftime('%m%d%Y_%H%M%S')}.pkl", "wb"))
+# pickle.dump(scores_dict, open(f"../results/scores_dict{datetime.now().strftime('%m%d%Y_%H%M%S')}.pkl", "wb"))
+# pickle.dump(equalized_odds_dict, open(f"../results/EO_dict{datetime.now().strftime('%m%d%Y_%H%M%S')}.pkl", "wb"))
 create_compiled_graph(scores_dict, ['AR'], ['AZ'], equalized_odds_dict, False)
 
 
