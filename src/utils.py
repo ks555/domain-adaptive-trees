@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
+import sys
+# setting path
+sys.path.append('../domain-adaptive-trees')
 from pandas import Series, DataFrame
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
