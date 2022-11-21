@@ -8,6 +8,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
+from datetime import datetime
 
 """
 Created on October 7, 2022
@@ -111,29 +112,33 @@ def create_compiled_graph(scores_dict, sources, targets, fairness_values_dict=No
         ax.set_ylabel("Accuracy", color='red')
         ax.set_title(f"Source {source}")
         ax2 = ax.twinx()
-        ax2.set_ylabel('Equalized Opportunity', color='blue')
+        ax2.set_ylabel('Equal Opportunity', color='blue')
         for target in targets:
-            scores = scores_dict[(source, target)]
-            fairness_values = fairness_values_dict[(source, target)]
-            # x values are based on alpha
-            x = 1 - np.array(list(scores.keys()))
-            # y values are accuracy for given lambda
-            y = scores.values()
-            tpr = fairness_values.values()
-            # tnr = [item[2] for item in confusion_values.values()]
-            ax.plot(x, y, color='red')
-            ax2.plot(x, tpr, color='blue')
-            # ax2.plot(x, tnr, color='darkblue')
+            try:
+                scores = scores_dict[(source, target)]
+                fairness_values = fairness_values_dict[(source, target)]
+                # x values are based on alpha
+                x = 1 - np.array(list(scores.keys()))
+                # y values are accuracy for given lambda
+                y = scores.values()
+                tpr = fairness_values.values()
+                # tnr = [item[2] for item in confusion_values.values()]
+                ax.plot(x, y, color='red')
+                ax2.plot(x, tpr, color='blue')
+                # ax2.plot(x, tnr, color='darkblue')
+            except:
+                print(f'failed to add {source}, {target} data')
         if not zoom_axis:
-            ax.set_ylim(0.5, 1)
+            ax.set_ylim(0.0, 1)
         ax2.tick_params(axis='y', labelcolor='blue')
         ax.tick_params(axis='y', labelcolor='red')
         # after plotting the data, format the labels
         left_values = ax.get_yticks()
         ax.set_yticklabels(['{:,.1%}'.format(x) for x in left_values])
         fig.tight_layout()
-        # plt.show()
-        plt.savefig(f"../results/Source_{source}")
+        plt.show()
+        plt.savefig(f"../results/Source_{source}.jpg")
+
 
 
 def loop_through_alphas(X_train, y_train, X_test, y_test, X_td=None, max_depth=5, cat=[]):
@@ -150,13 +155,18 @@ def loop_through_sources_targets(sources, targets, source_year='2017', target_ye
     # if source and target lists are equal, we get all combos of that list
     # including matching source / target (which is a useful baseline)
     for source in sources:
+        print(source)
         for target in targets:
-            X_train_s, X_test_s, y_train_s, y_test_s, X_train_t, X_test_t, y_train_t, y_test_t = create_dfs(
-                [source], source_year, [target], target_year, task=task)
-            scores_dict[(source, target)], confusion_values_dict[(source, target)] = loop_through_alphas(
-                X_train_s, y_train_s, X_test_t, y_test_t, X_td=X_train_t, max_depth=max_depth)
-            pickle.dump(scores_dict, open(f"../results/scores_{source}.pkl", "wb"))
-            pickle.dump(scores_dict, open(f"../results/confusion_{source}.pkl", "wb"))
+            try:
+                X_train_s, X_test_s, y_train_s, y_test_s, X_train_t, X_test_t, y_train_t, y_test_t = create_dfs(
+                    [source], source_year, [target], target_year, task=task)
+                scores_dict[(source, target)], confusion_values_dict[(source, target)] = loop_through_alphas(
+                    X_train_s, y_train_s, X_test_t, y_test_t, X_td=X_train_t, max_depth=max_depth)
+                pickle.dump(scores_dict, open(f"../results/scores_{source}.pkl", "wb"))
+                pickle.dump(scores_dict, open(f"../results/confusion_{source}.pkl", "wb"))
+
+            except:
+                print(f'failed to run for {source}, {target}')
 
     return scores_dict, confusion_values_dict
 
@@ -166,16 +176,17 @@ def run_it_all():
     create_compiled_graph(scores_dict, ['AL'], ['MS', 'ID'], equalized_odds_dict)
 
 
-states = [ 'AK', 'AL', 'AR', 'AZ', 'CA', 'CO', 'CT', 'DC', 'DE', 'FL', 'GA',
-           'HI', 'IA', 'ID', 'IL', 'IN', 'KS', 'KY', 'LA', 'MA', 'MD', 'ME',
-           'MI', 'MN', 'MO', 'MS', 'MT', 'NC', 'ND', 'NE', 'NH', 'NJ', 'NM',
-           'NV', 'NY', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX',
-           'UT', 'VA', 'VT', 'WA', 'WI', 'WV', 'WY']
+states = ['AK', 'AL', 'AR', 'AZ', 'CA', 'CO', 'CT', 'DC', 'DE', 'FL', 'GA',
+          'HI', 'IA', 'ID', 'IL', 'IN', 'KS', 'KY', 'LA', 'MA', 'MD', 'ME',
+          'MI', 'MN', 'MO', 'MS', 'MT', 'NC', 'ND', 'NE', 'NH', 'NJ', 'NM',
+          'NV', 'NY', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX',
+          'UT', 'VA', 'VT', 'WA', 'WI', 'WV', 'WY']
 
-scores_dict, equalized_odds_dict = loop_through_sources_targets(['MS', 'ID'], ['MS', 'ID'])
-pickle.dump(scores_dict, open(f"../results/scores_dict.pkl", "wb"))
-pickle.dump(equalized_odds_dict, open(f"../results/EO_dict.pkl", "wb"))
-create_compiled_graph(scores_dict, ['MS', 'ID'], ['MS', 'ID'], equalized_odds_dict, False)
+
+scores_dict, equalized_odds_dict = loop_through_sources_targets(['AL'], states)
+pickle.dump(scores_dict, open(f"../results/scores_dict{datetime.now().strftime('%m%d%Y_%H%M%S')}.pkl", "wb"))
+pickle.dump(equalized_odds_dict, open(f"../results/EO_dict{datetime.now().strftime('%m%d%Y_%H%M%S')}.pkl", "wb"))
+create_compiled_graph(scores_dict, ['AL'], states, equalized_odds_dict, False)
 
 
 # Run one tree
