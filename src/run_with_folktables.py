@@ -189,10 +189,17 @@ states = ['AK', 'AL', 'AR', 'AZ', 'CA', 'CO', 'CT', 'DC', 'DE', 'FL', 'GA',
           'UT', 'VA', 'VT', 'WA', 'WI', 'WV', 'WY']
 
 
+
+
 scores_dict, equalized_odds_dict = loop_through_sources_targets(['AR'], ['AZ'])
-# pickle.dump(scores_dict, open(f"../results/scores_dict{datetime.now().strftime('%m%d%Y_%H%M%S')}.pkl", "wb"))
-# pickle.dump(equalized_odds_dict, open(f"../results/EO_dict{datetime.now().strftime('%m%d%Y_%H%M%S')}.pkl", "wb"))
-create_compiled_graph(scores_dict, ['AR'], ['AZ'], equalized_odds_dict, False)
+pickle.dump(scores_dict, open(f"../results/scores_dict{datetime.now().strftime('%m%d%Y_%H%M%S')}.pkl", "wb"))
+pickle.dump(equalized_odds_dict, open(f"../results/EO_dict{datetime.now().strftime('%m%d%Y_%H%M%S')}.pkl", "wb"))
+
+
+
+# scores_dict = pickle.load(open('../results/scores_KY.pkl', 'rb'))
+# equalized_odds_dict = pickle.load(open('../results/confusion_KY.pkl', 'rb'))
+# create_compiled_graph(scores_dict, ['KY'], states, equalized_odds_dict, False)
 
 
 # Run one tree
