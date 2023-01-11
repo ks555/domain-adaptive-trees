@@ -3,6 +3,8 @@ Decision trees with representation
 
 Work in Progress
 
+January 09, 2023
+Current implementation under notesSR/ folder - TODO: merge into current src/ folder.
 
 October 26, 2022
 A bit of refactoring and reorganization has occured since last note, this is closer to final form of file organization. 
