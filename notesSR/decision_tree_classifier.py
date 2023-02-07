@@ -33,7 +33,7 @@ class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
 
     def fit(self, X: DataFrame, y: Series, cat_atts: List[str] = None,
             alpha: float = None, X_td: object = None, y_td: object = None, 
-            att_td: str = None):
+            att_td: str = None, maxdepth_td = None):
         # class values
         self.classes_ = np.sort(y.unique())
         # categorical attributes
@@ -42,8 +42,10 @@ class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
         self.alpha = alpha
         # target domain knowledge
         self.X_td = X_td
-        # target class knowledge
+        # target class knowledge (used only for W() metrics)
         self.y_td = y_td
+        # max depth in target domain knowledge
+        self.maxdepth_td = len(X_td.columns) if maxdepth_td is None and X_td is not None else maxdepth_td
         # unique values of attributes
         self.unique = { c:np.sort(X[c].unique()) for c in X.columns.to_list()}
         if X_td is None: # no domain knowledge
@@ -69,40 +71,32 @@ class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
         assert(leny>0)
         
         # get domain knowledge
-        self.target_weights, self.cond = self.get_target_weights(self._current_path)
+        self.target_weights, self.dyn_alpha = self.get_target_weights(self._current_path)
         # distribution given the classes_
         if self.X_td is not None and self.att_td is not None: # domain knowledge
             self.dist = self.distribution_est(y, X[self.att_td], self.target_weights[self.att_td])
         else:
             self.dist = self.distribution(y)
-        # true distribution (not needed for computation, only for post-analysis)
-        leny_td = None
-        true_dist = None
-        if self.y_td is not None:
-            y_td_cond = self.y_td if self.cond is None else self.y_td[self.cond]
-            true_dist = self.distribution(y_td_cond)
-            leny_td = len(y_td_cond)
-            #print(self.dist, leny_td, self.target_weights[self.att_td], self.X_td if self.cond is None else self.X_td[self.cond])
         
         # base case: all y is the same in this group     
         if np.count_nonzero(self.dist)==1:
             #print('a leaf!')
-            return {'type': 'leaf', 'tot': leny, 'dist': self.dist, 'tot_td':leny_td, 'tdist': true_dist}, 0
+            return {'type': 'leaf', 'tot': leny, 'dist': self.dist}, 0
         # base case: max depth reached
         if depth >= self.max_depth:
             #print('a leaf!')
-            return {'type': 'leaf', 'tot': leny, 'dist': self.dist, 'tot_td':leny_td, 'tdist': true_dist}, 0
+            return {'type': 'leaf', 'tot': leny, 'dist': self.dist}, 0
         # recursive case:
         col, cutoff, gain = self.find_best_split_of_all(X, y)  # find one split given an information gain
         if col is None:  # no split improves
-            return {'type': 'leaf', 'tot': leny, 'dist': self.dist, 'tot_td':leny_td, 'tdist': true_dist}, 0
+            return {'type': 'leaf', 'tot': leny, 'dist': self.dist}, 0
         if col in self.cat:  # split for cont. vars; all-but for cat. vars
             cond = X[col] == cutoff
         else:
             cond = X[col] <= cutoff
         #print('split on', col, gain, cutoff, len(X), sum(cond))
         par_node = {'type': 'split', 'gain': gain, 'split_col': col, 'cutoff': cutoff, 
-                    'tot': leny, 'dist': self.dist, 'tot_td':leny_td, 'tdist': true_dist}
+                    'tot': leny, 'dist': self.dist}
 
         prev_path = self._current_path.copy()
         # generate tree for the left hand side data
@@ -119,7 +113,7 @@ class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
 
         return par_node, max(dleft, dright) + 1
 
-    def get_target_weights(self, current_path, cond=None, cols=None) -> Dict:
+    def get_target_weights(self, current_path, cols=None) -> Dict:
         # Result is a Dict mapping column names to a Dictionary mapping values to float such that
         # for c in self.cat and value in X[c].unique(), it holds that
         #      target_weights[c][value] is the target P(c=value)
@@ -127,12 +121,21 @@ class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
         #      target_weights[c][value] is the target P(c<value)
         target_weights = dict()
         if self.X_td is None:
-            return target_weights, None
+            return target_weights, 1
 
+        curatts=set()
+        allatts=set()
+        cond=None
         # map current_path to the subset of X_td satisfying current_path
         for att, thr, di in current_path:
             if att not in self.X_td.columns:
                 continue
+            if att not in curatts:
+                if len(curatts)==self.maxdepth_td:
+                    allatts.add(att)
+                    continue
+                curatts.add(att)
+                allatts.add(att)
             con = self.X_td[att] == thr if att in self.cat else self.X_td[att] <= thr
             if di == 'right':
                 con = ~con
@@ -149,7 +152,8 @@ class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
             else:
                 target_weights[c] = {value: sum(freqs[v] for v in freqs if v <= value) for value in values}
 
-        return target_weights, cond
+        alpha = 0 if len(allatts)==0 else 1-len(curatts)/len(allatts)
+        return target_weights, alpha
 
     def find_best_split_of_all(self, X: DataFrame, y: Series):
         # extract the target weights as a dictionary
@@ -227,18 +231,22 @@ class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
                 continue
             y_left = y[cond_left]
             #props_left = self.distribution(y_left)
-            target_weights_left, _ = self.get_target_weights([(col, value, 'left')], self.cond, [self.att_td])
+            target_weights_left, _ = self.get_target_weights(self._current_path+[(col, value, 'left')], [self.att_td])
             props_left = self.distribution_est(y_left, xt_d[cond_left], target_weights_left[self.att_td])
             entropy_left = self.info_props(props_left)
             
             cond_right = ~cond_left
             y_right = y[cond_right]
             #props_right = self.distribution(y_right)
-            target_weights_right, _ = self.get_target_weights([(col, value, 'right')], self.cond, [self.att_td])
+            target_weights_right, _ = self.get_target_weights(self._current_path+[(col, value, 'right')], [self.att_td])
             props_right = self.distribution_est(y_right, xt_d[cond_right], target_weights_right[self.att_td])
             entropy_right = self.info_props(props_right)
 
-            prop_left = self.alpha * (n_left / n_tot) + (1 - self.alpha) * t_weight[value]
+            alpha = self.alpha # static
+            alpha = self.dyn_alpha # dynamic
+            prop_left = alpha * (n_left / n_tot) + (1 - alpha) * t_weight[value]
+            #if alpha != 0:
+            #    print(alpha, prop_left, t_weight[value])
             prop_right = 1 - prop_left
             gain = entropy_total - prop_left * entropy_left - prop_right * entropy_right
             if gain > best_gain:
@@ -303,12 +311,27 @@ class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
             return cur_layer.get('dist')
 
     def w_dist(self):
-        return self._w_dist(self.tree)/self.tree['tot_td']
+        tot_td = len(self.y_td)
+        return self._w_dist(self.tree, self.X_td, self.y_td)/tot_td
 
-    def _w_dist(self, tree):
+    def _w_dist(self, tree, X, y):
         if tree.get('cutoff'):
-            return self._w_dist(tree['left'])+self._w_dist(tree['right'])
-        return tree['tot_td']*wasserstein_distance(tree['dist'], tree['tdist'])
+            col = tree['split_col']
+            cutoff = tree['cutoff']
+            if col in self.cat:
+                cond = X[col] == cutoff
+            else:
+                cond = X[col] <= cutoff
+            X_left = X[cond]
+            y_left = y[cond]
+            w1 = self._w_dist(tree['left'], X_left, y_left)
+            X_right = X[~cond]
+            y_right = y[~cond]
+            w2 = self._w_dist(tree['right'], X_right, y_right)           
+            return w1 + w2
+        tot_td = len(y)
+        true_dist = self.distribution(y)
+        return tot_td*wasserstein_distance(tree['dist'], true_dist)
 
 #
 # EOF

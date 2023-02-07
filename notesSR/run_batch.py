@@ -6,7 +6,7 @@ import subprocess
 import utils
 
 # template of calling batch.py
-template = 'python batch.py {} {} subset2'
+template = 'python batch.py {} {} subset1'
 
 processes = []
 step = 1 # smaller -> more processes

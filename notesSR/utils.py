@@ -106,10 +106,11 @@ def load_ACSPublicCoverage(subset, states=states, source_year="2017", target_yea
 
 # train and test model
 def run_test(X_train, y_train, X_test, y_test, X_td, max_depth, min_cases=5, alpha=None, cat=cat_atts, 
-             t_o=None, y_td=None, att_td=None):
+             t_o=None, y_td=None, att_td=None, maxdepth_td=None):
     clf = DecisionTreeClassifier(max_depth, min_cases=min_cases)
-    clf.fit(X_train, y_train, cat_atts=cat, alpha=alpha, X_td=X_td, y_td=y_td, att_td=att_td)    
+    clf.fit(X_train, y_train, cat_atts=cat, alpha=alpha, X_td=X_td, y_td=y_td, att_td=att_td, maxdepth_td=maxdepth_td)    
     if t_o is not None:
+        print(t_o)
         post_clf = ThresholdOptimizer(estimator=clf, constraints=t_o, prefit=True, predict_method='predict')
         post_clf.fit(X_train, y_train, sensitive_features=X_train['SEX'])        
         y_pred = post_clf.predict(X_test, sensitive_features=X_test['SEX'], random_state=42) # fair-corrected predictions 
@@ -117,6 +118,11 @@ def run_test(X_train, y_train, X_test, y_test, X_td, max_depth, min_cases=5, alp
         y_pred = clf.predict(X_test)
     # performance confusion matrix
     cm = confusion_matrix(y_test, y_pred)
+    if False:
+        print('TP, Pred=1, True=1', sum( (y_pred==1) & (y_test==1)))
+        print('FP, Pred=1, True=0', sum( (y_pred==1) & (y_test==0)))
+        print('TN, Pred=0, True=0', sum( (y_pred==0) & (y_test==0)))
+        print('FN, Pred=0, True=1', sum( (y_pred==0) & (y_test==1)))
     # fairness confusion matrices
     male = 1
     cm_male = confusion_matrix(y_test[(X_test['SEX'] == male)], y_pred[(X_test.reset_index()['SEX'] == male)]) 
@@ -137,12 +143,14 @@ def cm_metrics(cm):
 
 # calculate metrics (the higher the better)
 def get_metric(r, m):
-    if m=='acc':
+    if m=='acc': # the higher the better
         return cm_metrics(r['cm'])[0]
     if m=='eqacc':
         return cm_metrics(r['cm_protected'])[0] - cm_metrics(r['cm_unprotected'])[0]
-    if m=='eop':
-        return cm_metrics(r['cm_protected'])[1] - cm_metrics(r['cm_unprotected'])[1]
+    if m=='eop': # the higher the better
+        #print('TPR unpro', cm_metrics(r['cm_unprotected'])[1])
+        #print('TPR pro', cm_metrics(r['cm_protected'])[1])
+        return abs(cm_metrics(r['cm_protected'])[1] - cm_metrics(r['cm_unprotected'])[1])
     if m=='dp': # the higher the better
-        return -abs(cm_metrics(r['cm_protected'])[4] - cm_metrics(r['cm_unprotected'])[4])
+        return abs(cm_metrics(r['cm_protected'])[4] - cm_metrics(r['cm_unprotected'])[4])
     raise "unknown metric"
