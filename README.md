@@ -1,10 +1,11 @@
-# UNIPI_DT
-Decision trees with representation
+# Domain Adaptive Decision Trees
 
-Work in Progress
+Work in Progress. Code for the [paper](https://arxiv.org/abs/2302.13846) to appear in ACM FAccT 2023.
+
+=== TODO: clean up code / clean below accordingly. 
 
 January 09, 2023
-Current implementation under notesSR/ folder - TODO: merge into current src/ folder.
+Current implementation under notesSR/ folder.
 
 October 26, 2022
 A bit of refactoring and reorganization has occured since last note, this is closer to final form of file organization. 
