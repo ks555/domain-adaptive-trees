@@ -2,5 +2,4 @@
 
 Work in Progress. Code for the [paper](https://arxiv.org/abs/2302.13846) to appear in ACM FAccT 2023.
 
-January 09, 2023
-Current implementation under notesSR/ folder.
+See branch v_FAccT_submission for January version; revise _other_to_be_removed content (folder will be deleted).
