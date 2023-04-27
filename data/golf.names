@@ -1,6 +1,0 @@
-outlook,string,discrete
-temperature,integer,continuous
-humidity,integer,continuous
-windy,string,discrete
-goodPlaying,float,weights
-toPlay,string,class

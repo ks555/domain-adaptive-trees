@@ -1,162 +1,132 @@
 # -*- coding: utf-8 -*-
-# -*- coding: utf-8 -*-
-import sys
-# setting path
-sys.path.append('../domain-adaptive-trees')
-from pandas import Series, DataFrame
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
-import folktables as ft
-import pandas as pd
+"""
+Utility functions for loading data and computing metrics
+"""
+
+# global imports
 import os
-import settings
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
 
-# todo: Kristen's list
-# 6. Get or make a csv of col datatypes - maybe just Categorical or Not?
+# external imports
+import folktables as ft
+from fairlearn.postprocessing import ThresholdOptimizer
 
+# local imports
+from decision_tree_classifier import DecisionTreeClassifier
 
-def split_data(X: DataFrame, y: Series, size: float = 0.25, rs: int = 123):
-    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=size, random_state=rs)
+# states
+states = sorted(['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI',
+          'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI',
+          'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC',
+          'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT',
+          'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'PR'])
+# categorical attributes
+cat_atts = ['SCHL', 'MAR', 'SEX',  'DIS', 'ESP', 'CIT', 'MIG', 'MIL', 'ANC', 'NATIVITY', 'DEAR', 'DEYE', 'DREM', 'ESR', 'ST', 'FER', 'RAC1P']
+
+# subset of attributes: subset1 is the one used in the paper
+def get_attributes(subset='all'):
+    if subset=='subset1':
+        atts = ['SCHL', 'MAR', 'AGEP', 'SEX', 'CIT', 'RAC1P']
+    elif subset=='subset2':
+        atts = ['AGEP', 'SEX', 'RAC1P']
+    elif subset=='cat':
+        atts = cat_atts
+    else:
+        atts = ft.ACSPublicCoverage.features
+    return atts
+
+# data split into training and test
+def split_data(X, y, test_size = 0.25, random_state = 42):
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
     return x_train, x_test, y_train, y_test
 
-
-def print_scores(y_test: Series, y_pred: Series):
-    print(f'Accuracy: {accuracy_score(y_test, y_pred)}')
-    return accuracy_score(y_test, y_pred)
-
-
-def load_folktables_data(states=["CA"], survey_year='2018', horizon='1-Year', survey='person'):
+# load folktables state data
+def load_folktables_data(state, survey_year='2017', horizon='1-Year', survey='person'):
     # add check for data, so it doesn't need to download
-    root_dir = settings.PROJECT_ROOT
+    root_dir = "../"
     state_codes = pd.read_csv(os.path.join(root_dir, 'data', 'adult', 'state_codes.csv'))
-    acs_data = pd.DataFrame()
     # To avoid downloading each time, check per state if downloaded, if not, download
     # Either way, append the state data to acs_data data frame, updating the region field
-    for i in range(0, len(states)):
-        # get state code
-        code = state_codes.loc[state_codes['USPS'] == states[0]]['numeric'].values[0]
-        data_path = os.path.join(root_dir, "data", survey_year, horizon, f"psam_p{code}.csv")
-        # This file path works with person, not household survey
-        if os.path.exists(data_path):
-            # load from csv, update to region == i, append to acs_data
-            state_data = pd.DataFrame(data_path)
-            state_data.REGION = i = i+1
-            acs_data = acs_data.append(state_data, ignore_index=True)
-        else:
-            # download that state
-            data_source = ft.ACSDataSource(survey_year=survey_year,
-                                           horizon=horizon, survey=survey, root_dir=os.path.join(root_dir, 'data', 'adult'))
-            state_data = data_source.get_data(states=[states[i]], download=True)
-            # update the region field so that data can be identified by state
-            state_data.REGION = i = i+1
-            # append to acs_data
-            acs_data = acs_data.append(state_data, ignore_index=True)
-    return acs_data
+    # get state code
+    code = state_codes.loc[state_codes['USPS'] == state]['numeric'].values[0]
+    data_path = os.path.join(root_dir, "data", survey_year, horizon, f"psam_p{code}.csv")
+    # This file path works with person, not household survey
+    if os.path.exists(data_path):
+        # load from csv, update to region == i, append to acs_data
+        state_data = pd.DataFrame(data_path)
+    else:
+        # download that state (and save in .csv format)
+        data_source = ft.ACSDataSource(survey_year=survey_year, horizon=horizon, 
+                        survey=survey, root_dir=os.path.join(root_dir, 'data', 'adult'))
+        state_data = data_source.get_data(states=[state], download=True)
+    return state_data
 
+# load and split data about states
+def load_ACSPublicCoverage(subset, states=states, year="2017"):
+    # Dictionaries mapping states to train-test data
+    X_train_s, X_test_s, y_train_s, y_test_s = dict(), dict(), dict(), dict()
+    task_method=ft.ACSPublicCoverage
+    for s in states:
+        print(s, end=' ')
+        source_data = load_folktables_data(s, year, '1-Year', 'person')  
+        features_s, labels_s, group_s = task_method.df_to_numpy(source_data)
+        X_s = pd.DataFrame(features_s, columns=task_method.features)
+        X_s['y'] = labels_s
+        y_s = X_s['y']
+        X_s = X_s[subset]
+        X_train_s[s], X_test_s[s], y_train_s[s], y_test_s[s] = split_data(X_s, y_s)
+    # Target is same as source, because in the same year 
+    X_train_t, X_test_t, y_train_t, y_test_t = X_train_s, X_test_s, y_train_s, y_test_s
+    return X_train_s, X_test_s, y_train_s, y_test_s, X_train_t, X_test_t, y_train_t, y_test_t 
 
-# takes your loaded data and splits into features, labels, group membership vectors
-def load_task(acs_data, task=ft.ACSPublicCoverage):
-    features, labels, group = task.df_to_numpy(acs_data)
-    return features, labels, group
+# extract metrics from confusion matrix
+def cm_metrics(cm):
+    TN, FP, FN, TP = cm.ravel()
+    N = TP + FP + FN + TN  # Total population
+    ACC = (TP + TN) / N  # Accuracy
+    TPR = TP / (TP + FN)  # True positive rate
+    FPR = FP / (FP + TN)  # False positive rate
+    FNR = FN / (TP + FN)  # False negative rate
+    PPP = (TP + FP) / N  # % predicted as positive
+    return [ACC, TPR, FPR, FNR, PPP]
 
-
-# returns percent of input population that belongs to each group
-# so input table should be for one location only
-def get_proportion_groupby(pop_data, group_column, threshold=None):
-    if threshold is not None:
-        pop_data.loc[pop_data[group_column] > threshold, 'above_threshold'] = True
-        pop_data.loc[pop_data[group_column] <= threshold, 'above_threshold'] = False
-        group_column = 'above_threshold'
-    proportions = pop_data.groupby([group_column]).size()
-    return proportions.values/len(pop_data)
-
-
-# path is the split path leading to the node that we are testing different split options on
-# the instances in that node will be saved as csv, then the get_proportion_groupby can be called by tree
-# separately for each split candidate that is a 'treated' feature
-# path will be col, split value, left or right, categorical true or false - over multiple splits
-# leads to the single node of interest, returns and / or saves the instances that exist at that node
-# ex. of path: split_path = [['CIT', 4, 0, True], ['PWGTP', 24, 1, False], ['RAC1P, 3', 1, True]]
-
-# current_path example: [('petal length (cm)', 3.0, 'right'), ('petal width (cm)', 1.8, 'left')]
-
-def follow_path(split_path, data):
-    for i in range(0, len(split_path)):
-        # if feature is categorical:
-        if split_path[i][3]:
-            # condition is if feature value equals split value
-            cond = data[split_path[i][0]] == split_path[i][1]
-        else:
-            # condition is if feature value is less than split value
-            cond = data[split_path[i][0]] < split_path[i][1]
-        # if path goes to left node:
-        if split_path[i][1]:
-            data = data[cond]
-        # else if right node:
-        else:
-            data = data[~cond]
-    # todo save data as csv for access at next split on treated variable
-    return data
-
-
-if __name__ == "__main__":
-
-    pop_data = load_folktables_data(['AL', 'CA'], '2017', '1-Year', 'person')
-    split_path = [['CIT', 4, 0, True], ['PWGTP', 24, 1, False], ['RAC1P', 3, 1, True]]
-    node_data = follow_path(split_path, pop_data)
-
-# Below this is Kristen's old code, Kristen's new code above, below is very specific to the ISTAT data but
-# I will adjust so that there is a preprocessing step so that IStat data can use the functions about as well
-'''
-# todo: this should be under the get_p_target class (lower levels in the project)
-df_locations = pickle.load(open('../../../Data/istat/CL_ITTER107.pkl', 'rb'))
-df_income = pickle.load(open('../../../Data/istat/dataflow_income.pkl', 'rb'))
-df_age_gender = pickle.load(open('../../../Data/istat/dataflow_age_gender.pkl', 'rb'))
-
-
-## Pass location(s) for which you want proportion information
-## proportion based on gender, age, or income will be returned, depending on parameters you pass
-## Combined?? Have not dealt with yet
-## Income cannot be combined in ISTAT??
-def get_population(locations, gender_thresh=None, age_thresh=None, income_thresh=None, income_lower=False):
-    if gender_thresh:
-        pass
-    if age_thresh:
-        pass
-
-    if income_thresh:
-    ## for each location in list, acquire proportion of pop in the income bracket of interest
-    ## return the proportions as a list
-
-    ## income_lower false (default) means that you only want to calculate the proportion 
-    ## of the pop that are in one income range (the one indicated by income_thresh).
-    ## income_lower true means that you want to calculate the proportion of the pop with 
-    ## income lower than income_thresh (so all of the income ranges below your threshold)
-        return get_income(locations, income_thresh, income_lower)  
-
-
-## Get location index based on location name
-## Check if there are duplicate names, what to do?
-def get_location_code(location_name):
-    ## error handling for location not found
-    try:
-       # location_index = df_locations[df_locations['name']==location_name].index.values[0]
-        location_index = df_locations[(df_locations['name']=='PISA') & (df_locations['ancestors']==4)].index.values[0]
-    except:
-        return None
-    return location_index
-
-
-## could preprocess dataset
-def get_proportion_income(income_slice, income_thresh, income_lower, year_index = 4):
-    total = sum(income_slice.iloc[year_index,0:8])
-    if income_thresh<=0:
-        if income_lower:
-            ## Return proportion in column 7 (income less than 0) of total
-            return income_slice.iloc[year_index,7]/total
-
-'''
-
-
-
-
+# calculate accuracy and fairness metrics
+def get_metric(r, m):
+    if m=='acc': # accuracy - the higher the better
+        return cm_metrics(r['cm'])[0]
+    if m=='eqacc': # equal accuracy - the smaller the better
+        return abs(cm_metrics(r['cm_protected'])[0] - cm_metrics(r['cm_unprotected'])[0])
+    if m=='eop': # equality of opportunity - the smaller the better
+        return abs(cm_metrics(r['cm_protected'])[1] - cm_metrics(r['cm_unprotected'])[1])
+    if m=='dp': # demographic parity - the smaller the better
+        return abs(cm_metrics(r['cm_protected'])[4] - cm_metrics(r['cm_unprotected'])[4])
+    raise "unknown metric"
+    
+## TO BE MOVED TO experiments.py or alike
+# train and test model
+def run_test(X_train, y_train, X_test, y_test, X_td, max_depth, min_cases=5, alpha=None, cat=cat_atts, 
+             t_o=None, y_td=None, att_td=None, maxdepth_td=None):
+    clf = DecisionTreeClassifier(max_depth, min_cases=min_cases)
+    clf.fit(X_train, y_train, cat_atts=cat, alpha=alpha, X_td=X_td, y_td=y_td, att_td=att_td, maxdepth_td=maxdepth_td)    
+    if t_o is not None:
+        print(t_o)
+        post_clf = ThresholdOptimizer(estimator=clf, constraints=t_o, prefit=True, predict_method='predict')
+        post_clf.fit(X_train, y_train, sensitive_features=X_train['SEX'])        
+        y_pred = post_clf.predict(X_test, sensitive_features=X_test['SEX'], random_state=42) # fair-corrected predictions 
+    else:
+        y_pred = clf.predict(X_test)
+    # performance confusion matrix
+    cm = confusion_matrix(y_test, y_pred)
+    if False:
+        print('TP, Pred=1, True=1', sum( (y_pred==1) & (y_test==1)))
+        print('FP, Pred=1, True=0', sum( (y_pred==1) & (y_test==0)))
+        print('TN, Pred=0, True=0', sum( (y_pred==0) & (y_test==0)))
+        print('FN, Pred=0, True=1', sum( (y_pred==0) & (y_test==1)))
+    # fairness confusion matrices
+    male = 1
+    cm_male = confusion_matrix(y_test[(X_test['SEX'] == male)], y_pred[(X_test.reset_index()['SEX'] == male)]) 
+    female = 2
+    cm_female = confusion_matrix(y_test[(X_test['SEX'] == female)], y_pred[(X_test.reset_index()['SEX'] == female)])
+    return clf, cm, cm_male, cm_female
