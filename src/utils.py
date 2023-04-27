@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 """
-Utility functions for loading data and computing metrics
+Utility functions for loading data and computing (fairness and performance) metrics
 """
 
 # global imports
@@ -8,39 +7,42 @@ import os
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
-
 # external imports
 import folktables as ft
 from fairlearn.postprocessing import ThresholdOptimizer
-
 # local imports
 from decision_tree_classifier import DecisionTreeClassifier
 
 # states
 states = sorted(['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI',
-          'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI',
-          'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC',
-          'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT',
-          'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'PR'])
+                 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI',
+                 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC',
+                 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT',
+                 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'PR'])
+
 # categorical attributes
-cat_atts = ['SCHL', 'MAR', 'SEX',  'DIS', 'ESP', 'CIT', 'MIG', 'MIL', 'ANC', 'NATIVITY', 'DEAR', 'DEYE', 'DREM', 'ESR', 'ST', 'FER', 'RAC1P']
+cat_atts = ['SCHL', 'MAR', 'SEX',  'DIS', 'ESP', 'CIT', 'MIG', 'MIL', 'ANC',
+            'NATIVITY', 'DEAR', 'DEYE', 'DREM', 'ESR', 'ST', 'FER', 'RAC1P']
+
 
 # subset of attributes: subset1 is the one used in the paper
 def get_attributes(subset='all'):
-    if subset=='subset1':
+    if subset == 'subset1':
         atts = ['SCHL', 'MAR', 'AGEP', 'SEX', 'CIT', 'RAC1P']
-    elif subset=='subset2':
+    elif subset == 'subset2':
         atts = ['AGEP', 'SEX', 'RAC1P']
-    elif subset=='cat':
+    elif subset == 'cat':
         atts = cat_atts
     else:
         atts = ft.ACSPublicCoverage.features
     return atts
 
+
 # data split into training and test
-def split_data(X, y, test_size = 0.25, random_state = 42):
+def split_data(X, y, test_size=0.25, random_state=42):
     x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
     return x_train, x_test, y_train, y_test
+
 
 # load folktables state data
 def load_folktables_data(state, survey_year='2017', horizon='1-Year', survey='person'):
@@ -58,16 +60,17 @@ def load_folktables_data(state, survey_year='2017', horizon='1-Year', survey='pe
         state_data = pd.DataFrame(data_path)
     else:
         # download that state (and save in .csv format)
-        data_source = ft.ACSDataSource(survey_year=survey_year, horizon=horizon, 
-                        survey=survey, root_dir=os.path.join(root_dir, 'data', 'adult'))
+        data_source = ft.ACSDataSource(survey_year=survey_year, horizon=horizon, survey=survey,
+                                       root_dir=os.path.join(root_dir, 'data', 'adult'))
         state_data = data_source.get_data(states=[state], download=True)
     return state_data
+
 
 # load and split data about states
 def load_ACSPublicCoverage(subset, states=states, year="2017"):
     # Dictionaries mapping states to train-test data
     X_train_s, X_test_s, y_train_s, y_test_s = dict(), dict(), dict(), dict()
-    task_method=ft.ACSPublicCoverage
+    task_method = ft.ACSPublicCoverage
     for s in states:
         print(s, end=' ')
         source_data = load_folktables_data(s, year, '1-Year', 'person')  
@@ -81,30 +84,41 @@ def load_ACSPublicCoverage(subset, states=states, year="2017"):
     X_train_t, X_test_t, y_train_t, y_test_t = X_train_s, X_test_s, y_train_s, y_test_s
     return X_train_s, X_test_s, y_train_s, y_test_s, X_train_t, X_test_t, y_train_t, y_test_t 
 
+
 # extract metrics from confusion matrix
 def cm_metrics(cm):
     TN, FP, FN, TP = cm.ravel()
     N = TP + FP + FN + TN  # Total population
-    ACC = (TP + TN) / N  # Accuracy
-    TPR = TP / (TP + FN)  # True positive rate
-    FPR = FP / (FP + TN)  # False positive rate
-    FNR = FN / (TP + FN)  # False negative rate
-    PPP = (TP + FP) / N  # % predicted as positive
+    ACC = (TP + TN) / N    # Accuracy
+    TPR = TP / (TP + FN)   # True positive rate
+    FPR = FP / (FP + TN)   # False positive rate
+    FNR = FN / (TP + FN)   # False negative rate
+    PPP = (TP + FP) / N    # % predicted as positive
     return [ACC, TPR, FPR, FNR, PPP]
+
 
 # calculate accuracy and fairness metrics
 def get_metric(r, m):
-    if m=='acc': # accuracy - the higher the better
+    # accuracy - the higher the better
+    if m == 'acc':
         return cm_metrics(r['cm'])[0]
-    if m=='eqacc': # equal accuracy - the smaller the better
+    # equal accuracy - the smaller the better
+    if m == 'eqacc':
         return abs(cm_metrics(r['cm_protected'])[0] - cm_metrics(r['cm_unprotected'])[0])
-    if m=='eop': # equality of opportunity - the smaller the better
+    # equality of opportunity - the smaller the better
+    if m == 'eop':
         return abs(cm_metrics(r['cm_protected'])[1] - cm_metrics(r['cm_unprotected'])[1])
-    if m=='dp': # demographic parity - the smaller the better
+    # demographic parity - the smaller the better
+    if m == 'dp':
         return abs(cm_metrics(r['cm_protected'])[4] - cm_metrics(r['cm_unprotected'])[4])
     raise "unknown metric"
-    
-## TO BE MOVED TO experiments.py or alike
+
+#
+# EOF
+#
+
+
+# todo: TO BE MOVED TO experiments.py or alike
 # train and test model
 def run_test(X_train, y_train, X_test, y_test, X_td, max_depth, min_cases=5, alpha=None, cat=cat_atts, 
              t_o=None, y_td=None, att_td=None, maxdepth_td=None):
