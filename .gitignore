@@ -1,10 +1,9 @@
 .ipynb_checkpoints
 */.ipynb_checkpoints/*
 __pycache__
-/unipi_dt/dt/__init__.py.txt
 .idea
-data/
-src/timing.csv
+data/adult/2017
+data/adult/2018
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
