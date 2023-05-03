@@ -3,9 +3,9 @@
 Decision tree classifier
 """
 
+# global imports
 import numpy as np
 import math
-from typing import Dict, List
 from pandas import DataFrame, Series
 from sklearn.base import BaseEstimator, ClassifierMixin
 from scipy.stats import wasserstein_distance
@@ -18,64 +18,75 @@ def epmf(y, values):
 
 # decision tree classifier
 class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
-    def __init__(self, max_depth: int, min_cases: int = 5, *args, **kwargs):
-        self.classes_ = None  
+    def __init__(self, max_depth: int, min_cases: int = 5):
+        # max tree depth
         self.max_depth = max_depth
-        self.depth = 0
+        # min number of cases to split a node
         self.min_cases = min_cases
+        # array of class values
+        self.classes_ = None  
+        # current tree depth
+        self.depth = 0
+        # set of categorical attributes
         self.cat = None
+        # actual decision tree
         self.tree = None
+        # current path in the decision tree
         self._current_path = []
-        self.alpha = 0
-        self.X_td = None # target domain knowledge
-        self.y_td = None # target class knowledge (used only for W() metrics)
-        self.att_td = None # target domain attribute for probability estimation
+        # target domain knowledge
+        self.X_td = None 
+        # target class domain knowledge (used only for W() metrics)
+        self.y_td = None 
+        # target domain attribute for probability estimation (X_w in Eq. 14)
+        self.att_xw = None 
 
-    def fit(self, X: DataFrame, y: Series, cat_atts: List[str] = None,
-            alpha: float = None, X_td: object = None, y_td: object = None, 
-            att_td: str = None, maxdepth_td = None):
+    # fit a decision tree on given training set
+    def fit(self, 
+            X: DataFrame, y: Series, # training set
+            cat_atts = [],  # categorical attributes
+            X_td = None, # target domain attributes
+            y_td: object = None, # target domain class
+            att_xw = None, # target domain attribute for probability estimation (X_w in Eq. 14)
+            maxdepth_td = None # max joint distribution target knowledge 
+            ):
         # class values
         self.classes_ = np.sort(y.unique())
         # categorical attributes
-        self.cat = set() if cat_atts is None else set(cat_atts)
-        # correction parameters
-        self.alpha = alpha
+        self.cat = set(cat_atts)
         # target domain knowledge
         self.X_td = X_td
         # target class knowledge (used only for W() metrics)
         self.y_td = y_td
         # max depth in target domain knowledge
         self.maxdepth_td = len(X_td.columns) if maxdepth_td is None and X_td is not None else maxdepth_td
-        # unique values of attributes
+        # unique values of attributes (stored once for efficiency)
         self.unique = { c:np.sort(X[c].unique()) for c in X.columns.to_list()}
         if X_td is None: # no domain knowledge
-            self.att_td = None 
-        elif att_td is not None: # att_td is given
-            self.att_td = att_td
-        elif alpha is not None: # att_td is not given but needed
+            self.att_xw = None # force self.att_xw to None
+        elif att_xw is not None: # att_td is given
+            self.att_xw = att_xw
+        # TBD
+        else: # att_td is not given but needed
             c = min(self.unique, key=self.unique.get)
-            self.att_td = c # use att with min number of values
+            self.att_xw = c # use att with min number of values
             print("att_td", c)
         # current decision path
         self._current_path = []
         # build tree
         self.tree, self.depth = self.build(X, y, depth=0)       
 
+    # build decision tree
     def build(self, X: DataFrame, y: Series, depth: int):
-        """
-        X: Feature set
-        y: target variable
-        depth: the depth of the current layer
-        """
         leny = len(y)
-        assert(leny>0)
-        
-        # get domain knowledge
-        self.target_weights, self.dyn_alpha = self.get_target_weights(self._current_path)
-        # distribution given the classes_
-        if self.X_td is not None and self.att_td is not None: # domain knowledge
-            self.dist = self.distribution_est(y, X[self.att_td], self.target_weights[self.att_td])
+        assert(leny>0)        
+        # get joint target domain knowledge and dynamic alpha (=fraction of splits in current path not in target domain)
+        self.target_probs, self.dyn_alpha = self.get_target_probs(self._current_path)
+        # distribution of the classes_
+        if self.X_td is not None and self.att_xw is not None: 
+            # with target domain knowledge Eq. 14
+            self.dist = self.distribution_est(y, X[self.att_xw], self.target_probs[self.att_xw])
         else:
+            # without
             self.dist = self.distribution(y)
         
         # base case: all y is the same in this group     
@@ -87,13 +98,11 @@ class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
             #print('a leaf!')
             return {'type': 'leaf', 'tot': leny, 'dist': self.dist}, 0
         # recursive case:
-        col, cutoff, gain = self.find_best_split_of_all(X, y)  # find one split given an information gain
+        col, cutoff, gain = self.find_best_split_of_all(X, y)  
         if col is None:  # no split improves
             return {'type': 'leaf', 'tot': leny, 'dist': self.dist}, 0
-        if col in self.cat:  # split for cont. vars; all-but for cat. vars
-            cond = X[col] == cutoff
-        else:
-            cond = X[col] <= cutoff
+        # split data rowss
+        cond = (X[col] == cutoff) if col in self.cat else (X[col] <= cutoff)
         #print('split on', col, gain, cutoff, len(X), sum(cond))
         par_node = {'type': 'split', 'gain': gain, 'split_col': col, 'cutoff': cutoff, 
                     'tot': leny, 'dist': self.dist}
@@ -113,51 +122,62 @@ class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
 
         return par_node, max(dleft, dright) + 1
 
-    def get_target_weights(self, current_path, cols=None) -> Dict:
-        # Result is a Dict mapping column names to a Dictionary mapping values to float such that
-        # for c in self.cat and value in X[c].unique(), it holds that
-        #      target_weights[c][value] is the target P(c=value)
-        # for c NOT in self.cat and value in X[c].unique(), it holds that
-        #      target_weights[c][value] is the target P(c<value)
-        target_weights = dict()
+    # return target domain probabilities (\hat{P}_T(X=x|phi') in Sect. 3.1)
+    # phi' = given current_path, possibly limited to self.maxdepth_td attributes
+    # X belongs to a list of columns (None=all columns) 
+    # result as a dictionary 
+    def get_target_probs(self, current_path, cols=None):
+        target_probs = dict()
+        # require domain knowledge
         if self.X_td is None:
-            return target_weights, 1
-
-        curatts=set()
-        allatts=set()
-        cond=None
-        # map current_path to the subset of X_td satisfying current_path
+            return target_probs, 1
+        # self.maxdepth_td is the maximum joint distribution domain knowledge
+        curatts=set() # attributes in the domain knowledge currently considered
+        allatts=set() # all attributes currently considered
+        cond=None # elements in the target domain satisfying all the conditions so far
+        # map current_path to the subset of X_td satisfying current_path conditions
         for att, thr, di in current_path:
+            # for each condition in the current_path
             if att not in self.X_td.columns:
                 continue
             if att not in curatts:
+                # attribute not yet in the joint distribution domain knowledge
                 if len(curatts)==self.maxdepth_td:
                     allatts.add(att)
+                    # maximum size reached, don't add att tot the joint distribution domain knowledge
                     continue
+                # add att to the joint distribution domain
                 curatts.add(att)
                 allatts.add(att)
+            # elements in the target domain satisfying the condition
             con = self.X_td[att] == thr if att in self.cat else self.X_td[att] <= thr
             if di == 'right':
                 con = ~con
+            # elements in the target domain satisfying all the conditions so far
             cond = con if cond is None else cond & con
-        #
+        # target domain knowledge restricted to conditions in the current_path
         X_td_current = self.X_td[cond] if cond is not None else self.X_td
+        # if cols is None, all the columns in the target domain knowledge are considered
         if cols is None:
             cols = X_td_current.columns.to_list()
+        # for each column
         for c in cols:
+            # pmf of the column in target domain knowledge
             freqs = X_td_current[c].value_counts(normalize=True).to_dict()
+            # all the unique values of the column 
             values = self.unique[c]
+            # Eq. 8
             if c in self.cat:
-                target_weights[c] = {value: (freqs[value] if value in freqs else 0) for value in values}
+                target_probs[c] = {value: (freqs[value] if value in freqs else 0) for value in values}
             else:
-                target_weights[c] = {value: sum(freqs[v] for v in freqs if v <= value) for value in values}
-
+                target_probs[c] = {value: sum(freqs[v] for v in freqs if v <= value) for value in values}
+        # proportion of attributes not in the joint target domain
         alpha = 0 if len(allatts)==0 else 1-len(curatts)/len(allatts)
-        return target_weights, alpha
+        return target_probs, alpha
 
     def find_best_split_of_all(self, X: DataFrame, y: Series):
         # extract the target weights as a dictionary
-        #target_weights = self.get_target_weights(X) if self.running_da_cov_shift else None
+        #target_weights = self.get_target_probs(X) if self.running_da_cov_shift else None
         best_gain = 0
         best_col = None
         best_cutoff = None
@@ -165,11 +185,11 @@ class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
         for c in X.columns.to_list():
             is_cat = c in self.cat
             # domain-adaptive information gain
-            if self.alpha is not None and c in self.target_weights:
+            if c in self.target_probs:
                 # proceed with da if we have a target weight for att c given the current path
                 gain, cur_cutoff = self.da_find_best_split_attribute(c, X[c], y, 
-                             is_cat, self.target_weights[c], X[self.att_td], 
-                             self.target_weights[self.att_td])
+                             is_cat, self.target_probs[c], X[self.att_xw], 
+                             self.target_probs[self.att_xw])
             else:
                 # standard information gain
                 gain, cur_cutoff = self.find_best_split_attribute(X[c], y, is_cat)
@@ -211,7 +231,7 @@ class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
         return best_gain, best_cutoff
 
     def da_find_best_split_attribute(self, col:str, x: Series, y: Series,  
-            is_cat: bool, t_weight: Dict, xt_d: Series, t_weight_td: Dict):
+            is_cat: bool, t_weight, xt_d, t_weight_td):
         best_gain = 0
         best_cutoff = None
         entropy_total = self.entropy_total
@@ -231,18 +251,17 @@ class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
                 continue
             y_left = y[cond_left]
             #props_left = self.distribution(y_left)
-            target_weights_left, _ = self.get_target_weights(self._current_path+[(col, value, 'left')], [self.att_td])
-            props_left = self.distribution_est(y_left, xt_d[cond_left], target_weights_left[self.att_td])
+            target_weights_left, _ = self.get_target_probs(self._current_path+[(col, value, 'left')], [self.att_xw])
+            props_left = self.distribution_est(y_left, xt_d[cond_left], target_weights_left[self.att_xw])
             entropy_left = self.info_props(props_left)
             
             cond_right = ~cond_left
             y_right = y[cond_right]
             #props_right = self.distribution(y_right)
-            target_weights_right, _ = self.get_target_weights(self._current_path+[(col, value, 'right')], [self.att_td])
-            props_right = self.distribution_est(y_right, xt_d[cond_right], target_weights_right[self.att_td])
+            target_weights_right, _ = self.get_target_probs(self._current_path+[(col, value, 'right')], [self.att_xw])
+            props_right = self.distribution_est(y_right, xt_d[cond_right], target_weights_right[self.att_xw])
             entropy_right = self.info_props(props_right)
 
-            alpha = self.alpha # static
             alpha = self.dyn_alpha # dynamic
             prop_left = alpha * (n_left / n_tot) + (1 - alpha) * t_weight[value]
             #if alpha != 0:
@@ -255,25 +274,34 @@ class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
         #print('ret', best_gain, best_cutoff)
         return best_gain, best_cutoff
 
-    def distribution(self, y: Series):
+    # empirical distribution
+    def distribution(self, y):
         return epmf(y, self.classes_)
     
-    # should be called as distribution_est(y, X[self.att_td], self.target_weights[self.att_td])
-    def distribution_est(self, y, x, t_weight):
+    # empirical distribution estimate - Eq. 13 in the paper
+    def distribution_est(self, y, x_w_data, x_w_target_probs):
+        # estimate of P_T(Y|phi) as in Eq. 13
         props = None
         prev = 0
-        values = sorted(t_weight.keys())
+        values = sorted(x_w_target_probs.keys())
+        # for each value in X_w
         for value in values:
-            cond = x == value #if is_cat else x < value
+            cond = x_w_data == value 
             ycond = y[cond]
+            # P_S(Y|X_w=x)
             ydistr = self.distribution(ycond)
-            weight = t_weight[value]
-            if self.att_td not in self.cat:
+            # P_T(X_w=x)
+            weight = x_w_target_probs[value]
+            # for continuous, we need to subtract t_weight[value_previous]
+            #     because t_weight[value] is P_T(X_w <= x)
+            if self.att_xw not in self.cat:
                 weight -= prev
-                prev = t_weight[value]
+                prev = x_w_target_probs[value]
             distr = ydistr * weight
+            # list of addends in Eq. 14
             props = distr if props is None else props + distr
         tot = np.sum(props)
+        # Normalize to ensure that total sum is 1
         return props/tot if tot>0 else self.distribution(y)
 
     @staticmethod
