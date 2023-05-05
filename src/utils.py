@@ -6,19 +6,15 @@ Utility functions for loading data and computing (fairness and performance) metr
 import os
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix
 # external imports
 import folktables as ft
-from fairlearn.postprocessing import ThresholdOptimizer
-# local imports
-from decision_tree_classifier import DecisionTreeClassifier
 
 # states
 states = sorted(['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI',
                  'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI',
                  'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC',
                  'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT',
-                 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'PR'])
+                 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'])
 
 # categorical attributes
 cat_atts = ['SCHL', 'MAR', 'SEX',  'DIS', 'ESP', 'CIT', 'MIG', 'MIL', 'ANC',
@@ -116,31 +112,3 @@ def get_metric(r, m):
 #
 # EOF
 #
-
-
-# todo: TO BE MOVED TO experiments.py or alike
-# train and test model
-def run_test(X_train, y_train, X_test, y_test, X_td, max_depth, min_cases=5, alpha=None, cat=cat_atts, 
-             t_o=None, y_td=None, att_td=None, maxdepth_td=None):
-    clf = DecisionTreeClassifier(max_depth, min_cases=min_cases)
-    clf.fit(X_train, y_train, cat_atts=cat, alpha=alpha, X_td=X_td, y_td=y_td, att_td=att_td, maxdepth_td=maxdepth_td)    
-    if t_o is not None:
-        print(t_o)
-        post_clf = ThresholdOptimizer(estimator=clf, constraints=t_o, prefit=True, predict_method='predict')
-        post_clf.fit(X_train, y_train, sensitive_features=X_train['SEX'])        
-        y_pred = post_clf.predict(X_test, sensitive_features=X_test['SEX'], random_state=42) # fair-corrected predictions 
-    else:
-        y_pred = clf.predict(X_test)
-    # performance confusion matrix
-    cm = confusion_matrix(y_test, y_pred)
-    if False:
-        print('TP, Pred=1, True=1', sum( (y_pred==1) & (y_test==1)))
-        print('FP, Pred=1, True=0', sum( (y_pred==1) & (y_test==0)))
-        print('TN, Pred=0, True=0', sum( (y_pred==0) & (y_test==0)))
-        print('FN, Pred=0, True=1', sum( (y_pred==0) & (y_test==1)))
-    # fairness confusion matrices
-    male = 1
-    cm_male = confusion_matrix(y_test[(X_test['SEX'] == male)], y_pred[(X_test.reset_index()['SEX'] == male)]) 
-    female = 2
-    cm_female = confusion_matrix(y_test[(X_test['SEX'] == female)], y_pred[(X_test.reset_index()['SEX'] == female)])
-    return clf, cm, cm_male, cm_female

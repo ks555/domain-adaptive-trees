@@ -48,6 +48,7 @@ class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
         # unique values of attributes (stored once for efficiency)
         self.unique = None
         # variables used during tree building
+        self.da = False
         self.target_probs = None
         self.dyn_alpha = None
         self.dist = None
@@ -56,6 +57,7 @@ class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
     def fit(self, 
             X: DataFrame, y: Series,  # training set
             cat_atts=[],              # categorical attributes
+            da=False,                 # use domain adaptation
             X_td=None,                # target domain attributes
             y_td: object = None,      # target domain class
             att_xw=None,              # target domain attribute for probability estimation (X_w in Eq. 13)
@@ -65,22 +67,20 @@ class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
         self.classes_ = np.sort(y.unique())
         # categorical attributes
         self.cat = set(cat_atts)
+        # adopt domain adaptation
+        self.da = da
         # target domain knowledge
         self.X_td = X_td
         # target class knowledge (used only for W() metrics)
         self.y_td = y_td
+        # target domain attribute for probability estimation (X_w in Eq. 13)
+        self.att_xw = att_xw
         # max depth in target domain knowledge
         self.maxdepth_td = len(X_td.columns) if maxdepth_td is None and X_td is not None else maxdepth_td
         # unique values of attributes (stored once for efficiency)
         self.unique = {c: np.sort(X[c].unique()) for c in X.columns.to_list()}
-        if X_td is None:  # no domain knowledge
-            self.att_xw = None  # force self.att_xw to None
-        elif att_xw is not None:  # att_td is given
-            self.att_xw = att_xw
-        else:  # att_xw is not given but needed, use an heuristics
-            warnings.warn("att_xw not set, using the attribute with smallest number of distinct values")
-            self.att_xw = min(self.unique, key=self.unique.get)
-            #print("att_xw", self.att_xw)
+        if da and ((att_xw is None) or (X_td is None)) :  # domain knowledge
+            raise RuntimeError('X_td and att_xw are mandatory')
         # current decision path
         self._current_path = []
         # build tree
@@ -93,7 +93,7 @@ class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
         # get joint target domain knowledge and dynamic alpha (=fraction of splits in current path not in target domain)
         self.target_probs, self.dyn_alpha = self.get_target_probs(self._current_path)
         # distribution of the classes_
-        if self.X_td is not None: 
+        if self.da: 
             # with target domain knowledge Eq. 14
             self.dist = self.distribution_est(y, X[self.att_xw], self.target_probs[self.att_xw])
         else:
@@ -137,7 +137,7 @@ class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
     def get_target_probs(self, path, cols=None):
         target_probs = dict()
         # require domain knowledge
-        if self.X_td is None:
+        if not self.da:
             return target_probs, 1
         # self.maxdepth_td is the maximum joint distribution domain knowledge
         curatts = set()  # attributes in the domain knowledge currently considered
