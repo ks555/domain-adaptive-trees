@@ -56,7 +56,7 @@ def main():
     # set of columns
     attributes = utils.get_attributes(att_string)
     results = run_block(from_pos, to_pos, attributes, maxdepth_td, fairness_metric)
-    filename = "results/results_{}_{}_{}_{}".format(from_pos, to_pos, att_string, maxdepth_td) + ( ("_"+fairness_metric) if fairness_metric is not None else "") + ".pkl"
+    filename = "results/exp/results_{}_{}_{}_{}".format(from_pos, to_pos, att_string, maxdepth_td) + ( ("_"+fairness_metric) if fairness_metric is not None else "") + ".pkl"
     pickle.dump(results, open( filename, "wb" )) 
 
 def run_block(from_pos, to_pos, attributes, maxdepth_td, fairness_metric):

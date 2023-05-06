@@ -5,6 +5,7 @@ __pycache__
 data/adult/2017
 data/adult/2018
 src/results/exp
+src/results/exp_est
 src/results/*.png
 
 # Byte-compiled / optimized / DLL files
