@@ -78,7 +78,7 @@ def run_block(from_pos, to_pos, attributes, maxdepth_td, fairness_metric):
         for target in utils.states:
             print('source', source, 'size', size, 'min_cases', min_cases, 'target', target, 'size', len(X_train_t[target]))
             _dict = dists[(source, target)]
-            att_xw = min(_dict, key=lambda k: _dict[k]['d_y_cond_est']) if source != target else None
+            att_xw = min(_dict, key=lambda k: _dict[k]['w_y_cond']) if source != target else None
             das = [False, True] if source != target else [False]
             for da in das:
                 start = time.time()
