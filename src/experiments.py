@@ -82,8 +82,7 @@ def run_block(from_pos, to_pos, attributes, maxdepth_td, fairness_metric):
                 print(source, target, da, elapsed)         
     return results
 
-def get_commands(att_string, maxdepth_td, fairness_metric=None):
-    step = 5 # smaller -> more processes
+def get_commands(step, att_string, maxdepth_td, fairness_metric=None):
     template = 'python experiments.py {} {} {} {}'
     commands = []
     for i in range(0, len(utils.states), step):
@@ -93,28 +92,31 @@ def get_commands(att_string, maxdepth_td, fairness_metric=None):
         commands.append(command)
     return commands
 
-def all_experiments():
+def all_experiments(step):
     att_string = 'subset1'
     attributes = utils.get_attributes(att_string)
     natts = len(attributes)
     print('Experimenting', att_string, 'with', natts, 'atts')
     all_cmd = []
     for maxdepth_td in {1,2,natts}:
-        all_cmd.extend(get_commands(att_string, maxdepth_td))
-        all_cmd.extend(get_commands(att_string, maxdepth_td, 'demographic_parity')) 
-        all_cmd.extend(get_commands(att_string, maxdepth_td, 'true_positive_rate_parity')) 
+        all_cmd.extend(get_commands(step, att_string, maxdepth_td))
+        all_cmd.extend(get_commands(step, att_string, maxdepth_td, 'demographic_parity')) 
+        all_cmd.extend(get_commands(step, att_string, maxdepth_td, 'true_positive_rate_parity')) 
     print('Running', len(all_cmd), 'processes')
     processes = [subprocess.Popen(cmd, shell=True) for cmd in all_cmd]
     # wait all child processes
     _ = [p.wait() for p in processes]
 
 def main():
-    if len(sys.argv) == 2 and sys.argv[1]=='all_experiments':
-        all_experiments()
+    if len(sys.argv) in {2,3} and sys.argv[1]=='all_experiments':
+        # smaller step -> more parallelism
+        # step = 5 => 90 concurrent processes
+        step =  5 if len(sys.argv)==2 else int(sys.argv[2]) 
+        all_experiments(step)
         return
     if len(sys.argv) not in {5, 6}:
         # fairness_metric can be "demographic_parity" or "true_positive_rate_parity"
-        print('Usage: python all_experiments')
+        print('Usage: python all_experiments [step]')
         print('Usage: python experiments.py from_pos to_pos att_string maxdepth_td [fairness_metric]')
         exit(-1)
     # get params
