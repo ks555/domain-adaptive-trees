@@ -3,7 +3,6 @@ Decision tree classifier
 """
 
 # global imports
-import warnings
 import numpy as np
 import math
 from pandas import DataFrame, Series

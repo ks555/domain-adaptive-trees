@@ -38,27 +38,6 @@ def run_test(X_train, y_train, X_test, y_test, max_depth, min_cases=5, fairness_
     cm_female = confusion_matrix(y_test[(X_test['SEX'] == 2)], y_pred[(X_test.reset_index()['SEX'] == 2)])
     return clf, cm, cm_male, cm_female
 
-def main():
-    if len(sys.argv) == 2 and sys.argv[1]=='all_experiments':
-        all_experiments()
-        return
-    if len(sys.argv) not in {5, 6}:
-        # fairness_metric can be "demographic_parity" or "true_positive_rate_parity"
-        print('Usage: python all_experiments')
-        print('Usage: python experiments.py from_pos to_pos att_string maxdepth_td [fairness_metric]')
-        exit(-1)
-    # get params
-    from_pos = int(sys.argv[1])
-    to_pos = int(sys.argv[2])
-    att_string = sys.argv[3]
-    maxdepth_td = int(sys.argv[4])
-    fairness_metric = None if len(sys.argv)==5 else sys.argv[5]
-    # set of columns
-    attributes = utils.get_attributes(att_string)
-    results = run_block(from_pos, to_pos, attributes, maxdepth_td, fairness_metric)
-    filename = "results/exp/results_{}_{}_{}_{}".format(from_pos, to_pos, att_string, maxdepth_td) + ( ("_"+fairness_metric) if fairness_metric is not None else "") + ".pkl"
-    pickle.dump(results, open( filename, "wb" )) 
-
 def run_block(from_pos, to_pos, attributes, maxdepth_td, fairness_metric):
     # fixed params
     max_depth = 8
@@ -128,6 +107,27 @@ def all_experiments():
     processes = [subprocess.Popen(cmd, shell=True) for cmd in all_cmd]
     # wait all child processes
     _ = [p.wait() for p in processes]
+
+def main():
+    if len(sys.argv) == 2 and sys.argv[1]=='all_experiments':
+        all_experiments()
+        return
+    if len(sys.argv) not in {5, 6}:
+        # fairness_metric can be "demographic_parity" or "true_positive_rate_parity"
+        print('Usage: python all_experiments')
+        print('Usage: python experiments.py from_pos to_pos att_string maxdepth_td [fairness_metric]')
+        exit(-1)
+    # get params
+    from_pos = int(sys.argv[1])
+    to_pos = int(sys.argv[2])
+    att_string = sys.argv[3]
+    maxdepth_td = int(sys.argv[4])
+    fairness_metric = None if len(sys.argv)==5 else sys.argv[5]
+    # set of columns
+    attributes = utils.get_attributes(att_string)
+    results = run_block(from_pos, to_pos, attributes, maxdepth_td, fairness_metric)
+    filename = "results/exp/results_{}_{}_{}_{}".format(from_pos, to_pos, att_string, maxdepth_td) + ( ("_"+fairness_metric) if fairness_metric is not None else "") + ".pkl"
+    pickle.dump(results, open( filename, "wb" )) 
 
 if __name__ == "__main__":
     main()
