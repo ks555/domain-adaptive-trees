@@ -78,7 +78,7 @@ class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
         self.maxdepth_td = len(X_td.columns) if maxdepth_td is None and X_td is not None else maxdepth_td
         # unique values of attributes (stored once for efficiency)
         self.unique = {c: np.sort(X[c].unique()) for c in X.columns.to_list()}
-        if da and ((att_xw is None) or (X_td is None)) :  # domain knowledge
+        if da and ((att_xw is None) or (X_td is None)):  # domain knowledge
             raise RuntimeError('X_td and att_xw are mandatory')
         # current decision path
         self._current_path = []
@@ -111,7 +111,6 @@ class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
             return {'type': 'leaf', 'tot': leny, 'dist': self.dist}, 0
         # split data rows
         cond = (X[col] == cutoff) if col in self.cat else (X[col] <= cutoff)
-        #print('split on', col, gain, cutoff, len(X), sum(cond))
         par_node = {'type': 'split', 'gain': gain, 'split_col': col, 'cutoff': cutoff, 'tot': leny, 'dist': self.dist}
 
         prev_path = self._current_path.copy()
