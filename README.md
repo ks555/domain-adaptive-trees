@@ -1,6 +1,6 @@
 # Domain Adaptive Decision Trees
 **Jose M. Alvarez**, Scuola Normale Superiore, University of Pisa; Pisa, Italy; jose.alvarez@di.unipi.it\
-**Kristen M. Scott**, KU Leuven, Leuven.AI; Leuven, Belgium; kristen.scott@kuleuven.be\ tst
+**Kristen M. Scott**, KU Leuven, Leuven.AI; Leuven, Belgium; kristen.scott@kuleuven.be\
 **Bettina Berendt**, TU Berlin, Weizenbaum Institute, KU Leuven; Berlin, Germany; berendt@tu-berlin.de\
 **Salvatore Ruggieri**, University of Pisa; Pisa, Italy; salvatore.ruggieri@unipi.it 
 
