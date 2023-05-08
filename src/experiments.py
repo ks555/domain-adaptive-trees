@@ -111,7 +111,7 @@ def main():
     if len(sys.argv) in {2,3} and sys.argv[1]=='all_experiments':
         # smaller step -> more parallelism
         # step = 5 => 90 concurrent processes
-        step =  5 if len(sys.argv)==2 else int(sys.argv[2]) 
+        step = 5 if len(sys.argv)==2 else int(sys.argv[2]) 
         all_experiments(step)
         return
     if len(sys.argv) not in {5, 6}:
