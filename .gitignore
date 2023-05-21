@@ -4,7 +4,6 @@ __pycache__
 .idea
 data/adult/2017
 data/adult/2018
-src/results/exp
 src/results/*.png
 
 # Byte-compiled / optimized / DLL files
