@@ -4,7 +4,7 @@
 **Bettina Berendt**, TU Berlin, Weizenbaum Institute, KU Leuven; Berlin, Germany; berendt@tu-berlin.de\
 **Salvatore Ruggieri**, University of Pisa; Pisa, Italy; salvatore.ruggieri@unipi.it 
 
-Repository for the *Domain Adaptive Decision Trees: Implications for Accuracy and Fairness* [[arXiv](https://arxiv.org/abs/2302.13846)] to appear in ACM FAccT 2023.
+Repository for accompanying code to J.M. Alvarez, K.M. Scott, B, Berendt, and S. Ruggieri. [Domain Adaptive Decision Trees: Implications for Accuracy and Fairness](https://dl.acm.org/doi/abs/10.1145/3593013.3594008). *FAccT '23: Proceedings of the 2023 ACM Conference on Fairness, Accountability, and Transparency*, June 2023, Pages 423–433, DOI: 10.1145/3593013.3594008.
 
 The data used is under the data folder, though it can be downloaded using FolkTables. 
 
