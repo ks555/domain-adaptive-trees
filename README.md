@@ -1,6 +1,6 @@
 # Domain Adaptive Decision Trees
 
-This is the repository for [*Domain Adaptive Decision Trees: Implications for Accuracy and Fairness* (FAcct'25)](https://dl.acm.org/doi/abs/10.1145/3593013.3594008). The data used is under the data folder, though it can also be downloaded using FolkTables. The scripts are under the source folder. It is necessary to run the notebook 01_CalculateDistances first. The notebook 02_PlotDistances evaluates these results. The notebook 03_TestSingleSourceTarget presents an example on how to implement a domain adaptive decision tree. The notebook 04_AnalyseResults carries out the analysis presented in the paper and should be run after the experiments.py script. The results are stored under the results folder.
+This is the repository for [*Domain Adaptive Decision Trees: Implications for Accuracy and Fairness* (FAcct'23)](https://dl.acm.org/doi/abs/10.1145/3593013.3594008). The data used is under the data folder, though it can also be downloaded using FolkTables. The scripts are under the source folder. It is necessary to run the notebook 01_CalculateDistances first. The notebook 02_PlotDistances evaluates these results. The notebook 03_TestSingleSourceTarget presents an example on how to implement a domain adaptive decision tree. The notebook 04_AnalyseResults carries out the analysis presented in the paper and should be run after the experiments.py script. The results are stored under the results folder.
 
 ## References
 
